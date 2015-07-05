@@ -30,8 +30,8 @@ root -b -l -q "$root_cmd"
 #rm LeptonTree.cc
 
 # remove example files
-#rm doAll.C
-#rm ScanChain.C
+rm doAll.C
+rm ScanChain.C
  
 # done
 #popd
