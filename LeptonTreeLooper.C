@@ -18,8 +18,8 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   TFile *currentFile = 0;
   std::map<std::string, TH1*> h_1d;
 
-  //map for checking if event already has dilep mass stored
-  std::map<std::string, int> eventMap;
+  //global var for checking if event already has dilep mass stored
+  int lastEventSaved_ = -1;
   
   // File Loop
   while ( (currentFile = (TFile*)fileIter.Next()) ) {
@@ -62,55 +62,31 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       if ( mll == -1 ) continue;
 
       int evt = evt_event();
+
+      if( lastEventSaved_ != evt ){
+
+      	//global dilep mass
+      	//save only the first dilep mass hyp for event.
+      	//Less than 2% efficiency loss for Z window in DY MC by not taking best Z mll hyp
+      	plot1D("h_global_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
+	
+      	//trigger specific dilep mass
+      	if ( HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() != 0 ){ plot1D("h_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300() != 0 ){ plot1D("h_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF() != 0 ){ plot1D("h_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele33_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele23_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele18_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele12_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+      	if ( HLT_Ele8_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+	
+      	lastEventSaved_ = evt;	
+      } //evtSaved
       
-      //global dilep mass
-      //save only the first dilep mass hyp for event.
-      //Less than 2% efficiency loss for Z window in DY MC by not taking best Z mll hyp
-      if( eventMap["global"] != evt ) { plot1D("h_global_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); eventMap["global"]=evt;}
-	 
-      //trigger specific dilep mass
-      // if ( trig() != 0 && eventMap["trig"] != evt ){
-      // 	plot1D("h_trig_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-      // 	eventMap["trig"] = evt; }
-      if ( HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() != 0 && eventMap["HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ"] != evt ){
-	plot1D("h_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ"] = evt; }
-      if ( HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300() != 0 && eventMap["HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300"] != evt ){
-	plot1D("h_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300"] = evt; }
-      if ( HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF() != 0 && eventMap["HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF"] != evt ){
-	plot1D("h_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF"] = evt; }
-      if ( HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 && eventMap["HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30"] = evt; }
-      if ( HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 && eventMap["HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30"] = evt; }
-      if ( HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 && eventMap["HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30"] = evt; }
-      if ( HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 && eventMap["HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30"] = evt; }
-      if ( HLT_Ele33_CaloIdM_TrackIdM_PFJet30() != 0 && eventMap["HLT_Ele33_CaloIdM_TrackIdM_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele33_CaloIdM_TrackIdM_PFJet30"] = evt; }
-      if ( HLT_Ele23_CaloIdM_TrackIdM_PFJet30() != 0 && eventMap["HLT_Ele23_CaloIdM_TrackIdM_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele23_CaloIdM_TrackIdM_PFJet30"] = evt; }
-      if ( HLT_Ele18_CaloIdM_TrackIdM_PFJet30() != 0 && eventMap["HLT_Ele18_CaloIdM_TrackIdM_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele18_CaloIdM_TrackIdM_PFJet30"] = evt; }
-      if ( HLT_Ele12_CaloIdM_TrackIdM_PFJet30() != 0 && eventMap["HLT_Ele12_CaloIdM_TrackIdM_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele12_CaloIdM_TrackIdM_PFJet30"] = evt; }
-      if ( HLT_Ele8_CaloIdM_TrackIdM_PFJet30() != 0 && eventMap["HLT_Ele8_CaloIdM_TrackIdM_PFJet30"] != evt ){
-	plot1D("h_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
-	eventMap["HLT_Ele8_CaloIdM_TrackIdM_PFJet30"] = evt; }
-
-
-
     } // end of event loop
   
     // Clean Up
