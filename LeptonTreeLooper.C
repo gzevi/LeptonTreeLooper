@@ -1,5 +1,8 @@
-
 #include "LeptonTreeLooper.h"
+
+int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents );
+void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight);
+
 
 int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
@@ -21,6 +24,23 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   //global var for checking if event already has dilep mass stored
   int lastEventSaved_ = -1;
   
+  //vector for trigger names
+  //need same number of entries and same order as trigDecisions!!!
+  std::vector<TString> trigNames;
+  trigNames.push_back("global");
+  trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ");
+  trigNames.push_back("HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300");
+  trigNames.push_back("HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF");
+  trigNames.push_back("HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  trigNames.push_back("HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  trigNames.push_back("HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  trigNames.push_back("HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  trigNames.push_back("HLT_Ele33_CaloIdM_TrackIdM_PFJet30");
+  trigNames.push_back("HLT_Ele23_CaloIdM_TrackIdM_PFJet30");
+  trigNames.push_back("HLT_Ele18_CaloIdM_TrackIdM_PFJet30");
+  trigNames.push_back("HLT_Ele12_CaloIdM_TrackIdM_PFJet30");
+  trigNames.push_back("HLT_Ele8_CaloIdM_TrackIdM_PFJet30");
+
   // File Loop
   while ( (currentFile = (TFile*)fileIter.Next()) ) {
 
@@ -58,37 +78,53 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       plot1D("h_eta", eta,  1, h_1d, "#eta", 150, -3, 3);
       plot1D("h_phi", phi,  1, h_1d, "#phi", 150, -3.5, 3.5);
 
+      //vector for trigger decisions
+      //need same number of entries and same order as trigNames!!!
+      std::vector<int> trigDecision;
+      trigDecision.push_back(1);
+      trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ());
+      trigDecision.push_back(HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300());
+      trigDecision.push_back(HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF());
+      trigDecision.push_back(HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30());
+      trigDecision.push_back(HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30());
+      trigDecision.push_back(HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30());
+      trigDecision.push_back(HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30());
+      trigDecision.push_back(HLT_Ele33_CaloIdM_TrackIdM_PFJet30());
+      trigDecision.push_back(HLT_Ele23_CaloIdM_TrackIdM_PFJet30());
+      trigDecision.push_back(HLT_Ele18_CaloIdM_TrackIdM_PFJet30());
+      trigDecision.push_back(HLT_Ele12_CaloIdM_TrackIdM_PFJet30());
+      trigDecision.push_back(HLT_Ele8_CaloIdM_TrackIdM_PFJet30());
+
+      //FIXME: what are leading leg branch names? no internet on the stupid train
+      bool hasEle8LL = tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg();
+      bool hasSC4LL = tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg();
+
+      //loop over triggers
+      for ( int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
+	if ( trigDecision[trigIdx] != 0 ) { makePlots( h_1d, trigNames[trigIdx], 1); }
+	if ( trigDecision[trigIdx] > 0 ) { makePlots( h_1d, trigNames[trigIdx]+"_TAG", 1); }
+	if ( trigDecision[trigIdx] < 0 ) { makePlots( h_1d, trigNames[trigIdx]+"_PROBE", 1); }
+	if ( hasEle8LL ) { makePlots( h_1d, trigNames[trigIdx]+"_hasEle8LL", 1); }
+	if ( hasSC4LL ) { makePlots( h_1d, trigNames[trigIdx]+"_hasSC4LL", 1); }
+      }
+
+      //now compute mll, only for first dilep mass in event
       float mll = dilep_mass();
       if ( mll == -1 ) continue;
 
       int evt = evt_event();
-
       if( lastEventSaved_ != evt ){
-
-      	//global dilep mass
-      	//save only the first dilep mass hyp for event.
-      	//Less than 2% efficiency loss for Z window in DY MC by not taking best Z mll hyp
-      	plot1D("h_global_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150);
 	
-      	//trigger specific dilep mass
-      	if ( HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() != 0 ){ plot1D("h_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300() != 0 ){ plot1D("h_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF() != 0 ){ plot1D("h_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30() != 0 ){ plot1D("h_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele33_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele23_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele18_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele12_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-      	if ( HLT_Ele8_CaloIdM_TrackIdM_PFJet30() != 0 ){ plot1D("h_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_mll", mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+	//loop over triggers
+	for ( int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
+	  if ( trigDecision[trigIdx] != 0 ) { plot1D(("h"+trigNames[trigIdx]+"_mll").Data(), mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
+	}	
+      	lastEventSaved_ = evt;
 	
-      	lastEventSaved_ = evt;	
       } //evtSaved
       
     } // end of event loop
-  
+    
     // Clean Up
     delete tree;
     file->Close();
@@ -113,4 +149,65 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   cout << endl;
   delete bmark;
   return 0;
+}
+
+
+void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1) {
+  
+  float pt = p4().pt();
+  float phi = p4().phi();
+  float eta = etaSC();
+  //float seedE = eSeed();
+  float theta = 2.0*TMath::ATan(TMath::Exp(-1.*eta));
+  //float seedEt = seedE * TMath::Sin(theta);
+  float SCrawEt = eSCRaw() * TMath::Sin(theta);
+
+  //float mll = dilep_mass();
+
+  TString EBEE = "";
+  TString EBEEsign = "";
+  
+  if (fabs(eta) > 1.57) {
+    EBEE = "EE";
+    if (eta > 0) EBEEsign = "EEpos";
+    if (eta < 0) EBEEsign = "EEneg";
+  }
+  else if (fabs(eta)<1.44){
+    EBEE = "EB";
+    EBEEsign = "EB";
+  }
+  else return;
+  
+  plot1D(("h"+sel+"_pt"+EBEE).Data(), pt,  weight, h_1, "pt", 50, 0, 100);
+  //plot1D(("h"+sel+"_seedEt"+EBEE).Data(), seedEt,  weight, h_1, "seed ET", 50, 0, 100);
+  plot1D(("h"+sel+"_SCrawEt"+EBEE).Data(), SCrawEt,  weight, h_1, "raw SC ET", 50, 0, 100);
+  plot1D(("h"+sel+"_eta").Data(), eta,  weight, h_1, "eta", 50, -2.5, 2.5);
+  plot1D(("h"+sel+"_phi").Data(), phi,  weight, h_1, "phi", 50, -3.5, 3.5);
+  
+  // plot1D(("h"+sel+"_relchiso"+EBEE).Data(), pfChargedHadronIso()/seedEt,  weight, h_1, "PFCh", 100, 0, 1);
+  // plot1D(("h"+sel+"_relemiso"+EBEE).Data(), pfPhotonIso()/seedEt,  weight, h_1, "PFEM", 100, 0, 1);
+  // plot1D(("h"+sel+"_relnhiso"+EBEE).Data(), pfNeutralHadronIso()/seedEt,  weight, h_1, "PFNh", 100, 0, 1);
+  
+  // plot1D(("h"+sel+"_relECALiso"+EBEE).Data(), ecalIso()/seedEt,  weight, h_1, "ECAL RelIso", 100, 0, 1);
+  // plot1D(("h"+sel+"_relHCALiso"+EBEE).Data(), hcalIso()/seedEt,  weight, h_1, "HCAL RelIso", 100, 0, 1);
+  // plot1D(("h"+sel+"_relECALHCALiso"+EBEE).Data(), (ecalIso()+hcalIso())/seedEt,  weight, h_1, "HCAL RelIso", 100, 0, 1);
+  
+  plot1D(("h"+sel+"_sieie"+EBEE).Data(), sigmaIEtaIEta_full5x5(),  weight, h_1, "sieie_5x5", 100, 0, EBEE=="EB" ? 0.05 : 0.1);
+  plot1D(("h"+sel+"_sipip"+EBEE).Data(), sigmaIPhiIPhi_full5x5(),  weight, h_1, "sipip_5x5", 100, 0, EBEE=="EB" ? 0.05 : 0.1);
+  plot1D(("h"+sel+"_deta"+EBEEsign).Data(), dEtaIn(),  weight, h_1, "DeltaEta", 50, -0.1, 0.1);
+  if (fabs(eta) > 1.57) plot1D(("h"+sel+"_deta"+EBEE).Data(), dEtaIn(),  weight, h_1, "DeltaEta", 50, -0.1, 0.1);
+  plot1D(("h"+sel+"_dphi"+EBEEsign).Data(), dPhiIn(),  weight, h_1, "DeltaPhi", 50, -0.1, 0.1);
+  if (fabs(eta) > 1.57) plot1D(("h"+sel+"_dphi"+EBEE).Data(), dPhiIn(),  weight, h_1, "DeltaPhi", 50, -0.1, 0.1);
+  plot1D(("h"+sel+"_HoverE"+EBEE).Data(), hOverE(),  weight, h_1, "H/E", 50, 0, 0.5);
+  if (fabs(eta) > 1.57) plot1D(("h"+sel+"_detaSeed"+EBEE).Data(), dEtaOut(),  weight, h_1, "DeltaEta", 50, -0.1, 0.1);
+  //if (fabs(eta) > 1.57) plot1D(("h"+sel+"_dphiSeed"+EBEE).Data(), dPhiOut(),  weight, h_1, "DeltaPhi", 50, -0.1, 0.1);
+  plot1D(("h"+sel+"_detaSeed"+EBEEsign).Data(), dEtaOut(),  weight, h_1, "DeltaEta", 50, -0.1, 0.1);
+  //plot1D(("h"+sel+"_dphiSeed"+EBEEsign).Data(), dPhiOut(),  weight, h_1, "DeltaPhi", 50, -0.1, 0.1);
+  
+  // plot1D(("h"+sel+"_PSEoverRawE"+EBEE).Data(), eSCPresh() / eSCRaw() ,  weight, h_1, "EPSoverERawSC", 50, 0, 1);
+
+  //plot1D("h"+sel+"_mll", mll,  weight, h_1, "m_{ll} [GeV]", 150, 0, 150);
+
+  return;
+  
 }
