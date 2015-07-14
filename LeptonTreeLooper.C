@@ -23,6 +23,9 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
   //global var for checking if event already has dilep mass stored
   int lastEventSaved_ = -1;
+
+  //set lumi in fb
+  const float lumi = .006;
   
   //vector for trigger names
   //need same number of entries and same order as trigDecisions!!!
@@ -40,6 +43,8 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   trigNames.push_back("HLT_Ele18_CaloIdM_TrackIdM_PFJet30");
   trigNames.push_back("HLT_Ele12_CaloIdM_TrackIdM_PFJet30");
   trigNames.push_back("HLT_Ele8_CaloIdM_TrackIdM_PFJet30");
+  trigNames.push_back("tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg");
+  trigNames.push_back("tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg");
 
   // File Loop
   while ( (currentFile = (TFile*)fileIter.Next()) ) {
@@ -94,34 +99,57 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       trigDecision.push_back(HLT_Ele18_CaloIdM_TrackIdM_PFJet30());
       trigDecision.push_back(HLT_Ele12_CaloIdM_TrackIdM_PFJet30());
       trigDecision.push_back(HLT_Ele8_CaloIdM_TrackIdM_PFJet30());
+      trigDecision.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());
+      trigDecision.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());
 
-      //FIXME: what are leading leg branch names? no internet on the stupid train
-      bool hasEle8LL = tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg();
-      bool hasSC4LL = tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg();
+      //vector for tag LL
+      //need same number of entries and same order as trigNames!!!
+      std::vector<int> tagLL;
+      tagLL.push_back(0);
+      tagLL.push_back(/*tag_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_ElectronLeg()*/ 0);
+      tagLL.push_back(/*tag_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_ElectronLeg()*/ 0);
+      tagLL.push_back(/*tag_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_ElectronLeg()*/ 0);
+      tagLL.push_back(tag_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_ElectronLeg());
+      tagLL.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());
+      tagLL.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());
 
-      //loop over triggers
-      for ( int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
-	if ( trigDecision[trigIdx] != 0 ) { makePlots( h_1d, trigNames[trigIdx], 1); }
-	if ( trigDecision[trigIdx] > 0 ) { makePlots( h_1d, trigNames[trigIdx]+"_TAG", 1); }
-	if ( trigDecision[trigIdx] < 0 ) { makePlots( h_1d, trigNames[trigIdx]+"_PROBE", 1); }
-	if ( hasEle8LL ) { makePlots( h_1d, trigNames[trigIdx]+"_hasEle8LL", 1); }
-	if ( hasSC4LL ) { makePlots( h_1d, trigNames[trigIdx]+"_hasSC4LL", 1); }
-      }
-
-      //now compute mll, only for first dilep mass in event
+      //skip leptons where a (different) tag doesn't exist in event
       float mll = dilep_mass();
       if ( mll == -1 ) continue;
 
+      const float lumiScale = scale1fb() * lumi;
+      //loop over triggers
+      for ( int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
+	if ( trigDecision[trigIdx] != 0) {
+	  makePlots( h_1d, trigNames[trigIdx], 1);
+	  makePlots( h_1d, trigNames[trigIdx]+"_scaled", lumiScale);
+	  if ( tagLL[trigIdx] != 0 ) makePlots( h_1d, trigNames[trigIdx]+"_tagLL", 1);
+	}//trigDecision	
+      }//trig loop
+
+      
+      //things to only fill once per event
       int evt = evt_event();
       if( lastEventSaved_ != evt ){
-	
-	//loop over triggers
 	for ( int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
-	  if ( trigDecision[trigIdx] != 0 ) { plot1D(("h"+trigNames[trigIdx]+"_mll").Data(), mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); }
-	}	
-      	lastEventSaved_ = evt;
-	
-      } //evtSaved
+	  if ( trigDecision[trigIdx] != 0) {
+	    plot1D(("h"+trigNames[trigIdx]+"_mll").Data(), mll,  1, h_1d, "m_{ll} [GeV]", 150, 0, 150); //dilepton mass
+	    plot1D(("h"+trigNames[trigIdx]+"_mll_pt").Data(), pt,  1, h_1d, "p_{T} [GeV]", 50, 0, 100); //probe pt
+	    plot1D(("h"+trigNames[trigIdx]+"_mll_eta").Data(), eta,  1, h_1d, "eta", 50, -2.5, 2.5); //probe eta
+	    plot1D(("h"+trigNames[trigIdx]+"_scaled_mll").Data(), mll,  lumiScale, h_1d, "m_{ll} [GeV]", 150, 0, 150); //dilepton mass
+	    plot1D("h_trigs",trigIdx-0.5, 1, h_1d, "trigger",trigNames.size(),-0.5,trigNames.size()-0.5); //counts how often each trigger fired
+	  }//trigDecision
+	}//trig loop
+	lastEventSaved_ = evt;
+      }//lastEvtSaved
       
     } // end of event loop
     
