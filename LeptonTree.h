@@ -279,6 +279,12 @@ protected:
 	int	tag_charge_;
 	TBranch *tag_charge_branch;
 	bool tag_charge_isLoaded;
+	float	tag_eSeed_;
+	TBranch *tag_eSeed_branch;
+	bool tag_eSeed_isLoaded;
+	float	tag_eSCraw_;
+	TBranch *tag_eSCraw_branch;
+	bool tag_eSCraw_isLoaded;
 	bool	tag_HLTLeadingLeg_;
 	TBranch *tag_HLTLeadingLeg_branch;
 	bool tag_HLTLeadingLeg_isLoaded;
@@ -1119,6 +1125,16 @@ void Init(TTree *tree) {
 		tag_charge_branch = tree->GetBranch("tag_charge");
 		if (tag_charge_branch) {tag_charge_branch->SetAddress(&tag_charge_);}
 	}
+	tag_eSeed_branch = 0;
+	if (tree->GetBranch("tag_eSeed") != 0) {
+		tag_eSeed_branch = tree->GetBranch("tag_eSeed");
+		if (tag_eSeed_branch) {tag_eSeed_branch->SetAddress(&tag_eSeed_);}
+	}
+	tag_eSCraw_branch = 0;
+	if (tree->GetBranch("tag_eSCraw") != 0) {
+		tag_eSCraw_branch = tree->GetBranch("tag_eSCraw");
+		if (tag_eSCraw_branch) {tag_eSCraw_branch->SetAddress(&tag_eSCraw_);}
+	}
 	tag_HLTLeadingLeg_branch = 0;
 	if (tree->GetBranch("tag_HLTLeadingLeg") != 0) {
 		tag_HLTLeadingLeg_branch = tree->GetBranch("tag_HLTLeadingLeg");
@@ -1882,6 +1898,8 @@ void GetEntry(unsigned int idx)
 		jet_close_lep_isLoaded = false;
 		ptratio_isLoaded = false;
 		tag_charge_isLoaded = false;
+		tag_eSeed_isLoaded = false;
+		tag_eSCraw_isLoaded = false;
 		tag_HLTLeadingLeg_isLoaded = false;
 		tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg_isLoaded = false;
 		tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg_isLoaded = false;
@@ -2108,6 +2126,8 @@ void LoadAllBranches()
 	if (jet_close_lep_branch != 0) jet_close_lep();
 	if (ptratio_branch != 0) ptratio();
 	if (tag_charge_branch != 0) tag_charge();
+	if (tag_eSeed_branch != 0) tag_eSeed();
+	if (tag_eSCraw_branch != 0) tag_eSCraw();
 	if (tag_HLTLeadingLeg_branch != 0) tag_HLTLeadingLeg();
 	if (tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg_branch != 0) tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg();
 	if (tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg_branch != 0) tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg();
@@ -3374,6 +3394,32 @@ void LoadAllBranches()
 			tag_charge_isLoaded = true;
 		}
 		return tag_charge_;
+	}
+	float &tag_eSeed()
+	{
+		if (not tag_eSeed_isLoaded) {
+			if (tag_eSeed_branch != 0) {
+				tag_eSeed_branch->GetEntry(index);
+			} else { 
+				printf("branch tag_eSeed_branch does not exist!\n");
+				exit(1);
+			}
+			tag_eSeed_isLoaded = true;
+		}
+		return tag_eSeed_;
+	}
+	float &tag_eSCraw()
+	{
+		if (not tag_eSCraw_isLoaded) {
+			if (tag_eSCraw_branch != 0) {
+				tag_eSCraw_branch->GetEntry(index);
+			} else { 
+				printf("branch tag_eSCraw_branch does not exist!\n");
+				exit(1);
+			}
+			tag_eSCraw_isLoaded = true;
+		}
+		return tag_eSCraw_;
 	}
 	bool &	tag_HLTLeadingLeg()
 	{
@@ -5232,6 +5278,8 @@ namespace lepton_tree {
 	const ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float> > &jet_close_lep();
 	const float &ptratio();
 	const int &tag_charge();
+	const float &tag_eSeed();
+	const float &tag_eSCraw();
 	const bool &tag_HLTLeadingLeg();
 	const int &tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg();
 	const int &tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg();
