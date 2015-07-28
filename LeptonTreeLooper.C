@@ -34,6 +34,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   //set_goodrun_file("goodRunList/private_json_and_DCS_150716_snt.txt");
   set_goodrun_file("goodRunList/shilpi.txt");
 
+
   //vector for trigger names
   //need same number of entries and same order as trigDecisions!!!
   std::vector<TString> trigNames;
@@ -90,10 +91,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
       // Analysis Code
 
-      //poor man's good run list
-      //int run = evt_run();
-      //if ( evt_isRealData() && !(run == 251244 || run == 251251 || run == 251252 || run == 251561 || run == 251562 || run == 251643 || run == 251721 || run == 251883) ) continue;
-      //if ( evt_isRealData() && !(run == 251244 || run == 251251 || run == 251252) ) continue;
+      //good run list
       if (evt_isRealData() && !goodrun(evt_run(), evt_lumiBlock())) continue; 
 
       if ( fabs(id()) != 11) continue;
@@ -142,7 +140,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       //float lumiScale = scale1fb() * lumi * 20; //multiply by 20 for DYtest2
       if (evt_isRealData()) lumiScale = 1;      
 
-      //if data, calculate weight based on PUreweighting
+      //if not data, calculate weight based on PUreweighting
       if (!evt_isRealData()){
 	const int vtx_bin = h_ratio->GetXaxis()->FindBin(nvtx());
 	float puWeight = h_ratio->GetBinContent(vtx_bin);
@@ -202,14 +200,12 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	if (mll < 70 && mll > 30){ makePlots( h_1d, "Fake", lumiScale);}	
       }// isRealData?
       
-
-      
       //things to only fill once per event
       const int evt = evt_event();
       if( lastEventSaved_ != evt ){
-
+	
 	if((evt_isRealData() && tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
-
+	  
 	  //inclusive mll
 	  plot1D("hZprobe_mll_all",mll, lumiScale, h_1d, "mll",150,0,150);
 	  if (bothEB){	plot1D("hZprobe_mllEB_all",mll, lumiScale, h_1d, "mll",150,0,150); }
@@ -248,7 +244,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	//make plots for individual triggers
 	for ( unsigned int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
 	  if ( trigDecision[trigIdx] != 0) {
-
+	    
 	    //require ptPlat in denominator, for eta efficiency
 	    if ( (tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 || !evt_isRealData()) && passes_POG_mediumID() && pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "tagIsLead_probeMedPog_"+ trigNames[trigIdx] +"_ptPlat", lumiScale) ;
 
@@ -537,7 +533,6 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   // plot1D(("h"+sel+"_e3x3"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw,  weight, h_1, "e3x3",100, 0, EBEE=="EB" ? 200 : 400);
   // plot1D(("h"+sel+"_e3x3_over_e5x5"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw / probe_e5x5_full5x5,  weight, h_1, "e3x3/e5x5",50, 0, 1);
   // plot1D(("h"+sel+"_e1x5_over_eSCRaw"+EBEE).Data(), probe_e1x5_full5x5 / probe_eSCRaw,  weight, h_1, "e1x5/eSCRaw",50, 0, 1);
-
 
   
   return;
