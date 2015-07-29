@@ -112,16 +112,20 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
       //dilep mass requirements
       //if (mll < 70 || mll > 110) continue;
-
-      //things to only fill once per event
-      if (! isRandom()) continue;
-      
+    
       //probe requirements
       if (!passes_POG_tightID()) continue;
 
-      //dilepton trigger efficiency
-      makeDilepPlots( h_1d, "probeTightPog", lumiScale) ;
-      if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() > 0 && tag_p4().pt()>25 && fabs(tag_p4().eta())<2.5 && pt>20 && fabs(eta)<2.5) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_probeTightPog", lumiScale) ;
+     //bool for pt>25 and pt>20 ele
+      bool doubleElExists = false;
+      doubleElExists = (tag_p4().pt()>25 && fabs(tag_p4().eta())<2.5 && pt>20 && fabs(eta)<2.5) || (tag_p4().pt()>20 && fabs(tag_p4().eta())<2.5 && pt>25 && fabs(eta)<2.5);
+
+      //things to only fill once per event
+      if ( isRandom() ) {
+	//dilepton trigger efficiency
+	if (doubleElExists) makeDilepPlots( h_1d, "probeTightPog", lumiScale) ;
+	if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() > 0 && doubleElExists) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_probeTightPog", lumiScale) ;
+      }
       
       //tag requirements
       if (tag_p4().pt() < 30 ) continue;
