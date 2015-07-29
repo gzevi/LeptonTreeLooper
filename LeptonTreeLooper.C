@@ -77,7 +77,8 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       //vectors for triggers
       std::vector<TString> trigNames; std::vector<int> trigDecision; std::vector<int> tagLL; std::vector<float> trigPtPlat;
       trigNames.push_back("global");     trigDecision.push_back(1);       tagLL.push_back(0);  trigPtPlat.push_back(0);
-      trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ"); trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ()); tagLL.push_back(/*tag_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_ElectronLeg()*/ 0); trigPtPlat.push_back(0);
+      trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ"); trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ()); tagLL.push_back(0); trigPtPlat.push_back(0);
+      trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL"); trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL()); tagLL.push_back(0); trigPtPlat.push_back(0);
       trigNames.push_back("HLT_Ele27_eta2p1_WPTight_Gsf"); trigDecision.push_back(HLT_Ele27_eta2p1_WPTight_Gsf()); tagLL.push_back(tag_HLT_Ele27_eta2p1_WPTight_Gsf()); trigPtPlat.push_back(40);
       trigNames.push_back("HLT_Ele27_eta2p1_WPLoose_Gsf"); trigDecision.push_back(HLT_Ele27_eta2p1_WPLoose_Gsf()); tagLL.push_back(tag_HLT_Ele27_eta2p1_WPLoose_Gsf()); trigPtPlat.push_back(40);
       // trigNames.push_back("HLT_Ele22_eta2p1_WPLoose_Gsf"); trigDecision.push_back(HLT_Ele22_eta2p1_WPLoose_Gsf()); tagLL.push_back(/* HLT_Ele22_eta2p1_WPLoose_Gsf()*/0); trigPtPlat.push_back(0);
@@ -85,6 +86,8 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       // trigNames.push_back("HLT_Ele23_WPLoose_Gsf");  trigDecision.push_back(HLT_Ele23_WPLoose_Gsf()); tagLL.push_back(/*HLT_Ele23_WPLoose_Gsf()*/0); trigPtPlat.push_back(0);
       trigNames.push_back("probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg"); trigDecision.push_back(probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg()); tagLL.push_back(0); trigPtPlat.push_back(25);
       trigNames.push_back("probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg"); trigDecision.push_back(probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg()); tagLL.push_back(0); trigPtPlat.push_back(20);
+      trigNames.push_back("HLT_Ele23_CaloIdL_TrackIdL_IsoVL"); trigDecision.push_back( HLT_Ele23_CaloIdL_TrackIdL_IsoVL() ); tagLL.push_back(0); trigPtPlat.push_back(25);
+      trigNames.push_back("HLT_Ele12_CaloIdL_TrackIdL_IsoVL"); trigDecision.push_back( HLT_Ele12_CaloIdL_TrackIdL_IsoVL() ); tagLL.push_back(0); trigPtPlat.push_back(20);
 
       //MC only triggers
       if (!evt_isRealData()) {
@@ -125,24 +128,30 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	//dilepton trigger efficiency
 	if (doubleElExists) makeDilepPlots( h_1d, "probeTightPog", lumiScale) ;
 	if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() > 0 && doubleElExists) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_probeTightPog", lumiScale) ;
+	if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ() != 0 && doubleElExists) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_probeTightPog2", lumiScale) ;
       }
       
       //tag requirements
       if (tag_p4().pt() < 30 ) continue;
       if (tag_p4().eta() > 2.1) continue;      
 
-      //denominator for trigger eff
+      //denominator for leading/trailing trigger eff
       //require tag matched to HLT_Ele27_eta2p1_WPLoose_Gsf or HLT_Ele27_eta2p1_WP75_Gsf
       if ( !((tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 && evt_isRealData()) || (!evt_isRealData() && tag_HLT_Ele27_eta2p1_WP75_Gsf() > 0 )) ) { continue;}
       
-      makeDilepPlots( h_1d, "tagPassEle27_probeTightPog", lumiScale);
-      
+      // makeDilepPlots( h_1d, "tagPassEle27_probeTightPog", lumiScale);
+      // if (isRandom()) makeDilepPlots( h_1d, "tagPassEle27_probeTightPog_random", lumiScale);
+
       //make plots for individual triggers
       for ( unsigned int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
-	if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_probeTrig", lumiScale); }//trigDecision	
+	// if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_probeTrig", lumiScale); }//trigDecision	
 	if (pt < trigPtPlat[trigIdx]) continue;
-	makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat", lumiScale);
-	if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat_probeTrig", lumiScale); }//trigDecision	
+	makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat", lumiScale); //denominator
+	if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat_probeTrig", lumiScale); }//trigDecision numerator
+	if (isRandom() ) {
+	  makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat_random", lumiScale); //denominator
+	  if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat_probeTrig_random", lumiScale); }//trigDecision numerator
+	}
       }//trig loop
       
     } // end of event loop
