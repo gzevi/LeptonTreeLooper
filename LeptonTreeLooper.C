@@ -139,12 +139,13 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       //require tag matched to HLT_Ele27_eta2p1_WPLoose_Gsf or HLT_Ele27_eta2p1_WP75_Gsf
       if ( !((tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 && evt_isRealData()) || (!evt_isRealData() && tag_HLT_Ele27_eta2p1_WP75_Gsf() > 0 )) ) { continue;}
       
-      // makeDilepPlots( h_1d, "tagPassEle27_probeTightPog", lumiScale);
-      // if (isRandom()) makeDilepPlots( h_1d, "tagPassEle27_probeTightPog_random", lumiScale);
+      makeDilepPlots( h_1d, "tagPassEle27_probeTightPog", lumiScale);
+      if (isRandom()) makeDilepPlots( h_1d, "tagPassEle27_probeTightPog_random", lumiScale);
 
       //make plots for individual triggers
       for ( unsigned int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
-	// if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_probeTrig", lumiScale); }//trigDecision	
+	if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_probeTrig", lumiScale); }//trigDecision	
+	if ( trigDecision[trigIdx] > 0 && isRandom()) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_probeTrig_random", lumiScale); }//trigDecision	
 	if (pt < trigPtPlat[trigIdx]) continue;
 	makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat", lumiScale); //denominator
 	if ( trigDecision[trigIdx] > 0) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagPassEle27_probeTightPog_ptPlat_probeTrig", lumiScale); }//trigDecision numerator
