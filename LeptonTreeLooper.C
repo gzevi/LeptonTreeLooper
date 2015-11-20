@@ -28,7 +28,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   int lastEventSaved_ = -1;
   
   //set lumi in fb
-  const float lumi = .042;
+  const float lumi = .010;
 
   //set goodrun file
   //set_goodrun_file("goodRunList/private_json_and_DCS_150716_snt.txt");
@@ -59,7 +59,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   trigNames.push_back("HLT_Ele27_eta2p1_WPLoose_Gsf");
   // trigNames.push_back("HLT_Ele22_eta2p1_WPLoose_Gsf");
   // trigNames.push_back("HLT_Ele22_eta2p1_WPTight_Gsf");
-  // trigNames.push_back("HLT_Ele23_WPLoose_Gsf");
+  trigNames.push_back("HLT_Ele23_WPLoose_Gsf");
 
   //load PU-ratio histogram for reweighting
   TFile * f_pu = new TFile("puWeight.root","READ");
@@ -92,8 +92,11 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       // Analysis Code
 
       //good run list
-      if (evt_isRealData() && !goodrun(evt_run(), evt_lumiBlock())) continue; 
-
+      //if (evt_isRealData() && !goodrun(evt_run(), evt_lumiBlock())) continue; 
+      //poor mans goodrunlist
+      if (evt_isRealData() && evt_run()!=254231 && evt_run()!=254232 && evt_run()!=254790 && evt_run()!=254852 && evt_run()!=254879) continue; //25ns
+      //if (evt_isRealData() && evt_run()!=254833) continue; //50ns
+      
       if ( fabs(id()) != 11) continue;
       LorentzVector el_p4 = p4();
       float pt = el_p4.pt();
@@ -129,22 +132,22 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       trigDecision.push_back(HLT_Ele27_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(40);
       // trigDecision.push_back(HLT_Ele22_eta2p1_WPLoose_Gsf());                                       tagLL.push_back(/* HLT_Ele22_eta2p1_WPLoose_Gsf()*/0);                                             trigPtPlat.push_back(0);
       // trigDecision.push_back(HLT_Ele22_eta2p1_WPTight_Gsf());                                       tagLL.push_back(/*HLT_Ele22_eta2p1_WPTight_Gsf()*/0);                                              trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele23_WPLoose_Gsf());                                              tagLL.push_back(/*HLT_Ele23_WPLoose_Gsf()*/0);                                                     trigPtPlat.push_back(0);
+      trigDecision.push_back(HLT_Ele23_WPLoose_Gsf());                                                 tagLL.push_back(/*HLT_Ele23_WPLoose_Gsf()*/0);                                                     trigPtPlat.push_back(25);
 
 
       //make sure all trigger vectors are same size
       if ( trigNames.size() != trigDecision.size() && trigNames.size() != tagLL.size() ){ cout << "Trigger vectors are not equal size! Continuing." << endl; continue; }
 
       //if real data, set lumiScale to 1
+      //float lumiScale = scale1fb() * lumi;
       float lumiScale = scale1fb() * lumi;
-      //float lumiScale = scale1fb() * lumi * 20; //multiply by 20 for DYtest2
       if (evt_isRealData()) lumiScale = 1;      
 
       //if not data, calculate weight based on PUreweighting
       if (!evt_isRealData()){
 	const int vtx_bin = h_ratio->GetXaxis()->FindBin(nvtx());
 	float puWeight = h_ratio->GetBinContent(vtx_bin);
-	lumiScale *= puWeight;
+	//lumiScale *= puWeight;
       }
       
       if (evt_isRealData()) {
@@ -159,7 +162,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
       //tag requirements
       if (tag_p4().pt() < 30 ) continue;
-      if (tag_p4().eta() > 2.1) continue;
+      if (fabs(tag_p4().eta()) > 2.1) continue;
 
       LorentzVector el_seedCl = el_p4;
       el_seedCl *= eSeed()/el_p4.E();
@@ -188,15 +191,34 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	if (mll < 100 && mll > 80 && mva()>0){ makePlots( h_1d, "ZprobePassMVA", lumiScale); }
 	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1){ makePlots( h_1d, "ZprobePassIso", lumiScale); }
 	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3()){ makePlots( h_1d, "ZprobePassID", lumiScale); }
+	if ( fabs(eta) > 1.77 ) {
+	  if (mll < 100 && mll > 80){ makePlots( h_1d, "ZprobeEta177", lumiScale); }
+	  if (mll < 100 && mll > 80 && mva()>0){ makePlots( h_1d, "ZprobePassMVAEta177", lumiScale); }
+	  if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1){ makePlots( h_1d, "ZprobePassIsoEta177", lumiScale); }
+	  if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3()){ makePlots( h_1d, "ZprobePassIDEta177", lumiScale); }
+	}
 	//if (mll < 100 && mll > 80 && conv_vtx_flag() == 0 ){ makePlots( h_1d, "ZprobePixelVeto", lumiScale); }
-	if (mll < 100 && mll > 80 && pt < 25 ){ makePlots( h_1d, "ZprobeLowPt", lumiScale); }
-	if (mll < 100 && mll > 80 && mva()>0 && pt < 25 ){ makePlots( h_1d, "ZprobePassMVALowPt", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt < 25 ){ makePlots( h_1d, "ZprobePassIsoLowPt", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt < 25 ){ makePlots( h_1d, "ZprobePassIDLowPt", lumiScale); }
-	if (mll < 100 && mll > 80 && pt > 25 ){ makePlots( h_1d, "ZprobeHighPt", lumiScale); }
-	if (mll < 100 && mll > 80 && mva()>0 && pt > 25 ){ makePlots( h_1d, "ZprobePassMVAHighPt", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 25 ){ makePlots( h_1d, "ZprobePassIsoHighPt", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 25 ){ makePlots( h_1d, "ZprobePassIDHighPt", lumiScale); }
+	//pt 10t20
+	if (mll < 100 && mll > 80 && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePt10t20", lumiScale); }
+	if (mll < 100 && mll > 80 && mva()>0 && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassMVAPt10t20", lumiScale); }
+	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassIsoPt10t20", lumiScale); }
+	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassIDPt10t20", lumiScale); }
+	//pt 20t30
+	if (mll < 100 && mll > 80 && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePt20t30", lumiScale); }
+	if (mll < 100 && mll > 80 && mva()>0 && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassMVAPt20t30", lumiScale); }
+	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassIsoPt20t30", lumiScale); }
+	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassIDPt20t30", lumiScale); }
+	//pt 30t40
+	if (mll < 100 && mll > 80 && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePt30t40", lumiScale); }
+	if (mll < 100 && mll > 80 && mva()>0 && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassMVAPt30t40", lumiScale); }
+	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassIsoPt30t40", lumiScale); }
+	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassIDPt30t40", lumiScale); }
+	//pt 40tInf
+	if (mll < 100 && mll > 80 && pt > 40 ){ makePlots( h_1d, "ZprobePt40tInf", lumiScale); }
+	if (mll < 100 && mll > 80 && mva()>0 && pt > 40 ){ makePlots( h_1d, "ZprobePassMVAPt40tInf", lumiScale); }
+	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 40 ){ makePlots( h_1d, "ZprobePassIsoPt40tInf", lumiScale); }
+	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 40 ){ makePlots( h_1d, "ZprobePassIDPt40tInf", lumiScale); }
+	//fake
 	if (mll < 70 && mll > 30){ makePlots( h_1d, "Fake", lumiScale);}	
       }// isRealData?
       
@@ -410,18 +432,26 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   TString EBEE = "";
   TString EBEEsign = "";
   
+  //endcap
   if (fabs(eta) > 1.479) {
     EBEE = "EE";
+    // if (fabs(eta) > 2.2) EBEE="EE3";
+    // if (fabs(eta) > 1.8 && fabs(eta) < 2.2) EBEE="EE2";
+    // if (fabs(eta) < 1.8) EBEE="EE1";
     if (eta > 0) EBEEsign = "EEpos";
     if (eta < 0) EBEEsign = "EEneg";
   }
+  //barrel
   else if (fabs(eta)<1.479){
     EBEE = "EB";
+    // if (fabs(eta) > 1.) EBEE="EB3";
+    // if (fabs(eta) > 0.5 && fabs(eta) <1.0 ) EBEE="EB2";
+    // if (fabs(eta) <0.5) EBEE="EB1";
     EBEEsign = "EB";
   }
   else return;
   
-  plot1D(("h"+sel+"_pt"+EBEE).Data(), pt,  weight, h_1, "pt", 50, 0, 100);
+  plot1D(("h"+sel+"_pt"+EBEE).Data(), pt,  weight, h_1, "pt", 100, 0, 200);
   plot1D(("h"+sel+"_leading_pt"+EBEE).Data(), pt1,  weight, h_1, "pt", 50, 0, 100);
   plot1D(("h"+sel+"_trailing_pt"+EBEE).Data(), pt2,  weight, h_1, "pt", 50, 0, 100);
   plot1D(("h"+sel+"_seedEt"+EBEE).Data(), seedEt,  weight, h_1, "seed ET", 50, 0, 100);
@@ -612,13 +642,13 @@ void makeDilepPlots(std::map<std::string, TH1*> & h_1, TString sel, float weight
     plot1D(("h"+sel+"_Z_eta").Data(), z_eta,  weight, h_1, "Z eta", 50, -2.5, 2.5); //probe eta
     plot1D(("h"+sel+"_Z_phi").Data(), z_phi,  weight, h_1, "Z phi", 50, -3.5, 3.5); //probe phi
     
-    plot1D(("h"+sel+"_lead_pt").Data(), pt1,  weight, h_1, "p_{T} [GeV]", 50, 0, 100); //lead pt
-    plot1D(("h"+sel+"_lead_pt"+EBEE).Data(), pt1,  weight, h_1, "p_{T} [GeV]", 50, 0, 100); //lead pt
+    plot1D(("h"+sel+"_lead_pt").Data(), pt1,  weight, h_1, "p_{T} [GeV]", 100, 0, 200); //lead pt
+    plot1D(("h"+sel+"_lead_pt"+EBEE).Data(), pt1,  weight, h_1, "p_{T} [GeV]", 100, 0, 200); //lead pt
     plot1D(("h"+sel+"_lead_eta").Data(), eta1,  weight, h_1, "eta", 50, -2.5, 2.5); //lead eta
     plot1D(("h"+sel+"_lead_phi").Data(), phi1,  weight, h_1, "phi", 50, -3.5, 3.5); //lead phi
 
-    plot1D(("h"+sel+"_trail_pt").Data(), pt2,  weight, h_1, "p_{T} [GeV]", 50, 0, 100); //trail pt
-    plot1D(("h"+sel+"_trail_pt"+EBEE).Data(), pt2,  weight, h_1, "p_{T} [GeV]", 50, 0, 100); //trail pt	
+    plot1D(("h"+sel+"_trail_pt").Data(), pt2,  weight, h_1, "p_{T} [GeV]", 100, 0, 200); //trail pt
+    plot1D(("h"+sel+"_trail_pt"+EBEE).Data(), pt2,  weight, h_1, "p_{T} [GeV]", 100, 0, 200); //trail pt	
     plot1D(("h"+sel+"_trail_eta").Data(), eta2,  weight, h_1, "eta", 50, -2.5, 2.5); //trail eta
     plot1D(("h"+sel+"_trail_phi").Data(), phi2,  weight, h_1, "phi", 50, -3.5, 3.5); //trail phi
     
