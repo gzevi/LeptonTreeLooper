@@ -10,6 +10,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
   //bool doPUweight = false;
   bool fast = true;
+  bool doPUreweight = false;
   // Benchmark
   TBenchmark *bmark = new TBenchmark();
   bmark->Start("benchmark");
@@ -28,11 +29,12 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   int lastEventSaved_ = -1;
   
   //set lumi in fb
-  const float lumi = .010;
+  const float lumi = 1.28023;
 
   //set goodrun file
   //set_goodrun_file("goodRunList/private_json_and_DCS_150716_snt.txt");
-  set_goodrun_file("goodRunList/shilpi.txt");
+  //set_goodrun_file("goodRunList/shilpi.txt");
+  set_goodrun_file("goodRunList/Cert_246908-258750_13TeV_PromptReco_Collisions15_25ns_JSON_snt.txt");
 
 
   //vector for trigger names
@@ -94,7 +96,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       //good run list
       //if (evt_isRealData() && !goodrun(evt_run(), evt_lumiBlock())) continue; 
       //poor mans goodrunlist
-      if (evt_isRealData() && evt_run()!=254231 && evt_run()!=254232 && evt_run()!=254790 && evt_run()!=254852 && evt_run()!=254879) continue; //25ns
+      //if (evt_isRealData() && evt_run()!=254231 && evt_run()!=254232 && evt_run()!=254790 && evt_run()!=254852 && evt_run()!=254879) continue; //25ns
       //if (evt_isRealData() && evt_run()!=254833) continue; //50ns
       
       if ( fabs(id()) != 11) continue;
@@ -144,10 +146,10 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       if (evt_isRealData()) lumiScale = 1;      
 
       //if not data, calculate weight based on PUreweighting
-      if (!evt_isRealData()){
+      if (!evt_isRealData() && doPUreweight){
 	const int vtx_bin = h_ratio->GetXaxis()->FindBin(nvtx());
 	float puWeight = h_ratio->GetBinContent(vtx_bin);
-	//lumiScale *= puWeight;
+	lumiScale *= puWeight;
       }
       
       if (evt_isRealData()) {
