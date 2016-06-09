@@ -10,7 +10,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
   //bool doPUweight = false;
   bool fast = true;
-  bool doPUreweight = false;
+  bool doPUreweight = true;
   // Benchmark
   TBenchmark *bmark = new TBenchmark();
   bmark->Start("benchmark");
@@ -41,30 +41,30 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   //need same number of entries and same order as trigDecisions!!!
   std::vector<TString> trigNames;
   trigNames.push_back("global");
-  trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ");
-  trigNames.push_back("HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300");
-  trigNames.push_back("HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF");
-  trigNames.push_back("HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  trigNames.push_back("HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  trigNames.push_back("HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  trigNames.push_back("HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  trigNames.push_back("HLT_Ele33_CaloIdM_TrackIdM_PFJet30");
-  trigNames.push_back("HLT_Ele23_CaloIdM_TrackIdM_PFJet30");
-  trigNames.push_back("HLT_Ele18_CaloIdM_TrackIdM_PFJet30");
-  trigNames.push_back("HLT_Ele12_CaloIdM_TrackIdM_PFJet30");
-  trigNames.push_back("HLT_Ele8_CaloIdM_TrackIdM_PFJet30");
-  trigNames.push_back("tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg");
-  trigNames.push_back("tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg");
-  trigNames.push_back("HLT_Ele32_eta2p1_WPTight_Gsf");
-  trigNames.push_back("HLT_Ele32_eta2p1_WPLoose_Gsf");
-  trigNames.push_back("HLT_Ele27_eta2p1_WPTight_Gsf");
-  trigNames.push_back("HLT_Ele27_eta2p1_WPLoose_Gsf");
+  // trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ");
+  // trigNames.push_back("HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300");
+  // trigNames.push_back("HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF");
+  // trigNames.push_back("HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  // trigNames.push_back("HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  // trigNames.push_back("HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  // trigNames.push_back("HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30");
+  // trigNames.push_back("HLT_Ele33_CaloIdM_TrackIdM_PFJet30");
+  // trigNames.push_back("HLT_Ele23_CaloIdM_TrackIdM_PFJet30");
+  // trigNames.push_back("HLT_Ele18_CaloIdM_TrackIdM_PFJet30");
+  // trigNames.push_back("HLT_Ele12_CaloIdM_TrackIdM_PFJet30");
+  // trigNames.push_back("HLT_Ele8_CaloIdM_TrackIdM_PFJet30");
+  // trigNames.push_back("tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg");
+  // trigNames.push_back("tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg");
+  // trigNames.push_back("HLT_Ele32_eta2p1_WPTight_Gsf");
+  // trigNames.push_back("HLT_Ele32_eta2p1_WPLoose_Gsf");
+  // trigNames.push_back("HLT_Ele27_eta2p1_WPTight_Gsf");
+  // trigNames.push_back("HLT_Ele27_eta2p1_WPLoose_Gsf");
   // trigNames.push_back("HLT_Ele22_eta2p1_WPLoose_Gsf");
   // trigNames.push_back("HLT_Ele22_eta2p1_WPTight_Gsf");
   trigNames.push_back("HLT_Ele23_WPLoose_Gsf");
 
   //load PU-ratio histogram for reweighting
-  TFile * f_pu = new TFile("puWeight.root","READ");
+  TFile * f_pu = new TFile("puWeight2016_may31.root","READ");
   TH1D * h_ratio = (TH1D*) f_pu->Get("h_dataOverMC_nvtxEB");
 
   // File Loop
@@ -104,6 +104,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       float pt = el_p4.pt();
       float eta =  el_p4.eta();
       float phi =  el_p4.phi();
+      if (pt < 20) continue;
 
       //easy variables
       plot1D("h_pt", pt,  1, h_1d, "pT [GeV]", 150, 0, 150);      
@@ -114,24 +115,24 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       //need same number of entries and same order as trigNames!!!
       std::vector<int> trigDecision;      std::vector<int> tagLL; std::vector<float> trigPtPlat;
       trigDecision.push_back(1);       tagLL.push_back(0);
-      trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ());                             tagLL.push_back(/*tag_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_ElectronLeg()*/ 0);                trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300());                         tagLL.push_back(/*tag_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_ElectronLeg()*/ 0);            trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF());                tagLL.push_back(/*tag_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_ElectronLeg()*/ 0);   trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(38);
-      trigDecision.push_back(HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(30);
-      trigDecision.push_back(HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele33_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(38);
-      trigDecision.push_back(HLT_Ele23_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(28);
-      trigDecision.push_back(HLT_Ele18_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele12_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele8_CaloIdM_TrackIdM_PFJet30());                                     tagLL.push_back(tag_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                              trigPtPlat.push_back(0);
-      trigDecision.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());                              tagLL.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());                                       trigPtPlat.push_back(0);
-      trigDecision.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());                               tagLL.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());                                        trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele32_eta2p1_WPTight_Gsf());                                          tagLL.push_back(tag_HLT_Ele32_eta2p1_WPTight_Gsf());                                               trigPtPlat.push_back(46);
-      trigDecision.push_back(HLT_Ele32_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele32_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(46);
-      trigDecision.push_back(HLT_Ele27_eta2p1_WPTight_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPTight_Gsf());                                               trigPtPlat.push_back(40);
-      trigDecision.push_back(HLT_Ele27_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(40);
+      // trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ());                             tagLL.push_back(/*tag_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_ElectronLeg()*/ 0);                trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300());                         tagLL.push_back(/*tag_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_ElectronLeg()*/ 0);            trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF());                tagLL.push_back(/*tag_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_ElectronLeg()*/ 0);   trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(38);
+      // trigDecision.push_back(HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(30);
+      // trigDecision.push_back(HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele33_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(38);
+      // trigDecision.push_back(HLT_Ele23_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(28);
+      // trigDecision.push_back(HLT_Ele18_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele12_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele8_CaloIdM_TrackIdM_PFJet30());                                     tagLL.push_back(tag_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                              trigPtPlat.push_back(0);
+      // trigDecision.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());                              tagLL.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());                                       trigPtPlat.push_back(0);
+      // trigDecision.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());                               tagLL.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());                                        trigPtPlat.push_back(0);
+      // trigDecision.push_back(HLT_Ele32_eta2p1_WPTight_Gsf());                                          tagLL.push_back(tag_HLT_Ele32_eta2p1_WPTight_Gsf());                                               trigPtPlat.push_back(46);
+      // trigDecision.push_back(HLT_Ele32_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele32_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(46);
+      // trigDecision.push_back(HLT_Ele27_eta2p1_WPTight_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPTight_Gsf());                                               trigPtPlat.push_back(40);
+      // trigDecision.push_back(HLT_Ele27_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(40);
       // trigDecision.push_back(HLT_Ele22_eta2p1_WPLoose_Gsf());                                       tagLL.push_back(/* HLT_Ele22_eta2p1_WPLoose_Gsf()*/0);                                             trigPtPlat.push_back(0);
       // trigDecision.push_back(HLT_Ele22_eta2p1_WPTight_Gsf());                                       tagLL.push_back(/*HLT_Ele22_eta2p1_WPTight_Gsf()*/0);                                              trigPtPlat.push_back(0);
       trigDecision.push_back(HLT_Ele23_WPLoose_Gsf());                                                 tagLL.push_back(/*HLT_Ele23_WPLoose_Gsf()*/0);                                                     trigPtPlat.push_back(25);
@@ -164,8 +165,8 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
       //tag requirements
       if (tag_p4().pt() < 30 ) continue;
-      if (fabs(tag_p4().eta()) > 2.1) continue;
-
+      if (fabs(tag_p4().eta()) > 2.5) continue;
+      
       LorentzVector el_seedCl = el_p4;
       el_seedCl *= eSeed()/el_p4.E();
       LorentzVector el_SC = el_p4;
@@ -188,8 +189,18 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       bool bothEB = false;
       bothEB = (fabs(tag_p4().eta()) < 1.479) && (fabs(eta) < 1.479);
       
-      if((evt_isRealData() && tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
-	if (mll < 100 && mll > 80){ makePlots( h_1d, "Zprobe", lumiScale); }
+      if((evt_isRealData() && tag_HLT_Ele23_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
+	if (mll < 100 && mll > 80){
+	  makePlots( h_1d, "Zprobe", lumiScale);
+	  if (evt_isRealData()) {
+	    if (evt_run() > 273726) makePlots( h_1d, "ZprobeLaterRuns", lumiScale);
+	    else  makePlots( h_1d, "ZprobeEarlierRuns", lumiScale);
+	  }
+	  else { //for MC, these are identical to regular plots
+	    makePlots( h_1d, "ZprobeLaterRuns", lumiScale);
+	    makePlots( h_1d, "ZprobeEarlierRuns", lumiScale);
+	  }
+	}
 	if (mll < 100 && mll > 80 && mva()>0){ makePlots( h_1d, "ZprobePassMVA", lumiScale); }
 	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1){ makePlots( h_1d, "ZprobePassIso", lumiScale); }
 	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3()){ makePlots( h_1d, "ZprobePassID", lumiScale); }
@@ -228,7 +239,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       const int evt = evt_event();
       if( lastEventSaved_ != evt ){
 	
-	if((evt_isRealData() && tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
+	if((evt_isRealData() && tag_HLT_Ele23_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
 	  
 	  //inclusive mll
 	  plot1D("hZprobe_mll_all",mll, lumiScale, h_1d, "mll",150,0,150);
@@ -260,7 +271,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	
 	//denominator for trigger eff
 	//require tag matched to HLT_Ele27_eta2p1_WPLoose_Gsf AND passes_POG_mediumID on probe
-	if ( (tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 || !evt_isRealData()) && passes_POG_mediumID() ) {
+	if ( (tag_HLT_Ele23_WPLoose_Gsf() > 0 || !evt_isRealData()) && passes_POG_mediumID() ) {
 	  makeDilepPlots( h_1d, "tagIsLead_probeMedPog", lumiScale);
 	  if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "tagIsLead_probeMedPog_etaLess2", lumiScale) ;
 	}
@@ -434,8 +445,16 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   TString EBEE = "";
   TString EBEEsign = "";
   
+  //barrel
+  if (fabs(eta)<1.479){
+    EBEE = "EB";
+    // if (fabs(eta) > 1.) EBEE="EB3";
+    // if (fabs(eta) > 0.5 && fabs(eta) <1.0 ) EBEE="EB2";
+    // if (fabs(eta) <0.5) EBEE="EB1";
+    EBEEsign = "EB";
+  }
   //endcap
-  if (fabs(eta) > 1.479) {
+  else if (fabs(eta) > 1.479) {
     EBEE = "EE";
     // if (fabs(eta) > 2.2) EBEE="EE3";
     // if (fabs(eta) > 1.8 && fabs(eta) < 2.2) EBEE="EE2";
@@ -443,13 +462,17 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
     if (eta > 0) EBEEsign = "EEpos";
     if (eta < 0) EBEEsign = "EEneg";
   }
-  //barrel
-  else if (fabs(eta)<1.479){
-    EBEE = "EB";
-    // if (fabs(eta) > 1.) EBEE="EB3";
-    // if (fabs(eta) > 0.5 && fabs(eta) <1.0 ) EBEE="EB2";
-    // if (fabs(eta) <0.5) EBEE="EB1";
-    EBEEsign = "EB";
+  else return;
+
+  //classify tag eta
+  TString EBEEtag = "";
+    //barrel
+  if (fabs(t_eta)<1.479){
+    EBEEtag = "EB";
+  }
+  //endcap
+  else if (fabs(t_eta) > 1.479) {
+    EBEEtag = "EE";
   }
   else return;
   
@@ -553,7 +576,7 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   plot1D(("h"+sel+"_eSCRawVSpt"+EBEE).Data(), probe_eSCRaw/pt,  weight, h_1, "eSCRaw/pt", 50, 0.5, 1.5);
   plot1D(("h"+sel+"_ckf_chi2_over_ckf_ndof"+EBEE).Data(), probe_chi2/probe_ndof,  weight, h_1, "chi2/ndof", 50, 0, 50);
   plot1D(("h"+sel+"_chi2_over_ndof"+EBEE).Data(), probe_chi2/probe_ndof,  weight, h_1, "ckf_chi2/ckf_ndof", 50, 0, 50);
-  plot1D(("h"+sel+"_tagpt"+EBEE).Data(), t_pt,  weight, h_1, "tag pt", 50, 0, 100);
+  plot1D(("h"+sel+"_tagpt"+EBEEtag).Data(), t_pt,  weight, h_1, "tag pt", 50, 0, 100);
   plot1D(("h"+sel+"_tageta").Data(), t_eta,  weight, h_1, "tag eta", 50, -2.5, 2.5);
   plot1D(("h"+sel+"_tagphi").Data(), t_phi,  weight, h_1, "tag phi", 50, -3.5, 3.5);
   plot1D(("h"+sel+"_Zpt"+EBEE).Data(), z_pt,  weight, h_1, "Z pt", 50, 0, 100);
@@ -562,9 +585,9 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   plot1D(("h"+sel+"_Zphi").Data(), z_phi,  weight, h_1, "Z phi", 50, -3.5, 3.5);
   plot1D(("h"+sel+"_ooemoop"+EBEE).Data(), fabs( (1.0/ecalEnergy()) - (eOverPIn()/ecalEnergy())) ,  weight, h_1, "|1/E - 1/p|", 50, 0, 1);
   plot1D(("h"+sel+"_e1x5_over_e5x5"+EBEE).Data(), probe_e1x5_full5x5 / probe_e5x5_full5x5,  weight, h_1, "e1x5/e5x5",50, 0, 1);
-  // plot1D(("h"+sel+"_e3x3"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw,  weight, h_1, "e3x3",100, 0, EBEE=="EB" ? 200 : 400);
-  // plot1D(("h"+sel+"_e3x3_over_e5x5"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw / probe_e5x5_full5x5,  weight, h_1, "e3x3/e5x5",50, 0, 1);
-  // plot1D(("h"+sel+"_e1x5_over_eSCRaw"+EBEE).Data(), probe_e1x5_full5x5 / probe_eSCRaw,  weight, h_1, "e1x5/eSCRaw",50, 0, 1);
+  plot1D(("h"+sel+"_e3x3"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw,  weight, h_1, "e3x3",100, 0, EBEE=="EB" ? 200 : 400);
+  plot1D(("h"+sel+"_e3x3_over_e5x5"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw / probe_e5x5_full5x5,  weight, h_1, "e3x3/e5x5",50, 0, 1);
+  plot1D(("h"+sel+"_e1x5_over_eSCRaw"+EBEE).Data(), probe_e1x5_full5x5 / probe_eSCRaw,  weight, h_1, "e1x5/eSCRaw",50, 0, 1);
 
   
   return;
