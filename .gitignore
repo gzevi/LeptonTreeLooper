@@ -1,4 +1,4 @@
 *.so
 *.d
 *.pcm
-plots.root
+*.root
