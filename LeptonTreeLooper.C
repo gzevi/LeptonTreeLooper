@@ -2,15 +2,32 @@
 #include "Tools/goodrun.h"
 #include "Tools/goodrun.cc"
 
+#include "EnergyScaleCorrection_class.hh"
+#include "EnergyScaleCorrection_class.cc"
+
+
 int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents );
 void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight);
 void makeDilepPlots(std::map<std::string, TH1*> & h_1, TString sel, float weight);
 
 int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
-  //bool doPUweight = false;
+  bool doDebug = false;
   bool fast = true;
   bool doPUreweight = true;
+  bool doScaleSmearCorrections = true;
+
+  //options for plots
+  const bool makeTriggerPlots = false;
+  const bool doMvaCleaning = false;
+  const bool doIsoCleaning = true;
+  const bool doIdCleaning = true;
+  const bool doSameSign = false;
+  const bool doPtBins = false;
+  const bool doEtaSplit = true;
+  const bool doNvtxSplit = false;
+
+  
   // Benchmark
   TBenchmark *bmark = new TBenchmark();
   bmark->Start("benchmark");
@@ -29,43 +46,32 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   int lastEventSaved_ = -1;
   
   //set lumi in fb
-  const float lumi = 1.28023;
+  const float lumi = 35.867;
 
   //set goodrun file
   //set_goodrun_file("goodRunList/private_json_and_DCS_150716_snt.txt");
   //set_goodrun_file("goodRunList/shilpi.txt");
-  set_goodrun_file("goodRunList/Cert_246908-258750_13TeV_PromptReco_Collisions15_25ns_JSON_snt.txt");
+  // set_goodrun_file("goodRunList/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON_snt.txt");
 
 
   //vector for trigger names
   //need same number of entries and same order as trigDecisions!!!
   std::vector<TString> trigNames;
   trigNames.push_back("global");
-  // trigNames.push_back("HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ");
-  // trigNames.push_back("HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300");
-  // trigNames.push_back("HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF");
-  // trigNames.push_back("HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  // trigNames.push_back("HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  // trigNames.push_back("HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  // trigNames.push_back("HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30");
-  // trigNames.push_back("HLT_Ele33_CaloIdM_TrackIdM_PFJet30");
-  // trigNames.push_back("HLT_Ele23_CaloIdM_TrackIdM_PFJet30");
-  // trigNames.push_back("HLT_Ele18_CaloIdM_TrackIdM_PFJet30");
-  // trigNames.push_back("HLT_Ele12_CaloIdM_TrackIdM_PFJet30");
-  // trigNames.push_back("HLT_Ele8_CaloIdM_TrackIdM_PFJet30");
-  // trigNames.push_back("tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg");
-  // trigNames.push_back("tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg");
-  // trigNames.push_back("HLT_Ele32_eta2p1_WPTight_Gsf");
-  // trigNames.push_back("HLT_Ele32_eta2p1_WPLoose_Gsf");
-  // trigNames.push_back("HLT_Ele27_eta2p1_WPTight_Gsf");
-  // trigNames.push_back("HLT_Ele27_eta2p1_WPLoose_Gsf");
-  // trigNames.push_back("HLT_Ele22_eta2p1_WPLoose_Gsf");
-  // trigNames.push_back("HLT_Ele22_eta2p1_WPTight_Gsf");
-  trigNames.push_back("HLT_Ele23_WPLoose_Gsf");
+  // trigNames.push_back("HLT_Ele23_WPLoose_Gsf");
 
   //load PU-ratio histogram for reweighting
-  TFile * f_pu = new TFile("puWeight2016_may31.root","READ");
+  TFile * f_pu = new TFile("data/puWeight_moriond_Prompt.root","READ");
   TH1D * h_ratio = (TH1D*) f_pu->Get("h_dataOverMC_nvtxEB");
+
+  //load electron scale correction class
+  EnergyScaleCorrection_class correctionClass("data/Moriond17_23Jan_ele",0);
+  correctionClass.doScale = true;
+  correctionClass.doSmearings = true;
+
+  //initialize TRandom class
+  TRandom3 * gRand = new TRandom3();
+  gRand->SetSeed(0);
 
   // File Loop
   while ( (currentFile = (TFile*)fileIter.Next()) ) {
@@ -81,6 +87,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
     if( nEventsTotal >= nEventsChain ) continue;
     unsigned int nEventsTree = tree->GetEntriesFast();
     for( unsigned int event = 0; event < nEventsTree; ++event) {
+    //for( unsigned int event = 0; event < 10000; ++event) {
     
       // Get Event Content
       if( nEventsTotal >= nEventsChain ) continue;
@@ -115,27 +122,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       //need same number of entries and same order as trigNames!!!
       std::vector<int> trigDecision;      std::vector<int> tagLL; std::vector<float> trigPtPlat;
       trigDecision.push_back(1);       tagLL.push_back(0);
-      // trigDecision.push_back(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ());                             tagLL.push_back(/*tag_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ_ElectronLeg()*/ 0);                trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300());                         tagLL.push_back(/*tag_HLT_DoubleEle8_CaloIdM_TrackIdM_Mass8_PFHT300_ElectronLeg()*/ 0);            trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF());                tagLL.push_back(/*tag_HLT_Ele10_CaloIdM_TrackIdM_CentralPFJet30_BTagCSV0p5PF_ElectronLeg()*/ 0);   trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele33_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(38);
-      // trigDecision.push_back(HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele23_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(30);
-      // trigDecision.push_back(HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele18_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30());                              tagLL.push_back(tag_HLT_Ele12_CaloIdL_TrackIdL_IsoVL_PFJet30_ElectronLeg());                       trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele33_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele33_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(38);
-      // trigDecision.push_back(HLT_Ele23_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele23_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(28);
-      // trigDecision.push_back(HLT_Ele18_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele18_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele12_CaloIdM_TrackIdM_PFJet30());                                    tagLL.push_back(tag_HLT_Ele12_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                             trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele8_CaloIdM_TrackIdM_PFJet30());                                     tagLL.push_back(tag_HLT_Ele8_CaloIdM_TrackIdM_PFJet30_ElectronLeg());                              trigPtPlat.push_back(0);
-      // trigDecision.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());                              tagLL.push_back(tag_HLT_Ele25WP60_Ele8_Mass55_LeadingLeg());                                       trigPtPlat.push_back(0);
-      // trigDecision.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());                               tagLL.push_back(tag_HLT_Ele25WP60_SC4_Mass55_LeadingLeg());                                        trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele32_eta2p1_WPTight_Gsf());                                          tagLL.push_back(tag_HLT_Ele32_eta2p1_WPTight_Gsf());                                               trigPtPlat.push_back(46);
-      // trigDecision.push_back(HLT_Ele32_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele32_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(46);
-      // trigDecision.push_back(HLT_Ele27_eta2p1_WPTight_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPTight_Gsf());                                               trigPtPlat.push_back(40);
-      // trigDecision.push_back(HLT_Ele27_eta2p1_WPLoose_Gsf());                                          tagLL.push_back(tag_HLT_Ele27_eta2p1_WPLoose_Gsf());                                               trigPtPlat.push_back(40);
-      // trigDecision.push_back(HLT_Ele22_eta2p1_WPLoose_Gsf());                                       tagLL.push_back(/* HLT_Ele22_eta2p1_WPLoose_Gsf()*/0);                                             trigPtPlat.push_back(0);
-      // trigDecision.push_back(HLT_Ele22_eta2p1_WPTight_Gsf());                                       tagLL.push_back(/*HLT_Ele22_eta2p1_WPTight_Gsf()*/0);                                              trigPtPlat.push_back(0);
-      trigDecision.push_back(HLT_Ele23_WPLoose_Gsf());                                                 tagLL.push_back(/*HLT_Ele23_WPLoose_Gsf()*/0);                                                     trigPtPlat.push_back(25);
+      // trigDecision.push_back(HLT_Ele23_WPLoose_Gsf());  tagLL.push_back(/*HLT_Ele23_WPLoose_Gsf()*/0); trigPtPlat.push_back(25);
 
 
       //make sure all trigger vectors are same size
@@ -152,6 +139,65 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	float puWeight = h_ratio->GetBinContent(vtx_bin);
 	lumiScale *= puWeight;
       }
+
+      //add electron scale and smearing corrections
+      float mll_corrected = -1;
+      float mll_test = -1;
+      pt_corrected_ = -1;
+      E_corrected_ = -1;
+      if (doScaleSmearCorrections){
+	float correction = 1;
+	float correctionTag = 1;
+	bool isEB = abs(eta) < 1.479;
+	bool isEBTag = abs(tag_p4().eta()) < 1.479;
+
+	if(evt_isRealData()) {	//scale data
+	  correction    = correctionClass.ScaleCorrection(evt_run(), isEB, r9_full5x5(), etaSC(), pt );
+	  correctionTag = correctionClass.ScaleCorrection(evt_run(), isEBTag, tag_r9_full5x5(), tag_p4().eta(), tag_p4().pt() ); 
+	  if (doDebug) {
+	    cout << "----------------------" << endl;
+	    cout << "pt: " << pt << endl;;
+	    cout << "CORRECTION: " << correction << endl;;
+	  }
+	}//isRealData
+	else {	//smear MC
+	  const float sigma    = correctionClass.getSmearingSigma(evt_run(), isEB, r9_full5x5(), etaSC(),pt, 0, 0);
+	  const float sigmaTag = correctionClass.getSmearingSigma(evt_run(), isEBTag, tag_r9_full5x5(), tag_p4().eta(), tag_p4().pt(), 0, 0); 
+	  gRand->SetSeed( evt_event() );
+	  correction    = 1 + gRand->Gaus(0,sigma);
+	  correctionTag = 1 + gRand->Gaus(0,sigmaTag);
+	  if (doDebug) {
+	    cout << "----------------------" << endl;
+	    cout << "pt: " << pt << endl;;
+	    cout << "SIGMA: " << sigma << endl;;
+	    cout << "CORRECTION: " << correction << endl;;
+	  }
+	}//not isrealData
+
+	//correct the probe pT and reconstruct dilep mass
+	TLorentzVector probeP4_corrected(0,0,0,0);
+	TLorentzVector tagP4_corrected(0,0,0,0);
+	probeP4_corrected.SetPtEtaPhiE(pt,eta,phi,el_p4.E());
+	tagP4_corrected.SetPtEtaPhiE(tag_p4().pt(),tag_p4().eta(),tag_p4().phi(),tag_p4().E());
+	probeP4_corrected *= correction;
+	tagP4_corrected *= correctionTag;
+	TLorentzVector dilepP4(0,0,0,0);
+	dilepP4 = tagP4_corrected + probeP4_corrected;
+	mll_corrected = dilepP4.M();
+	pt_corrected_ = probeP4_corrected.Pt();
+	E_corrected_ = probeP4_corrected.E();
+
+	//for testing and debugging
+	if (doDebug) {
+	  TLorentzVector probeP4_test(0,0,0,0);
+	  TLorentzVector tagP4_test(0,0,0,0);
+	  probeP4_test.SetPtEtaPhiE(pt,eta,phi,el_p4.E());
+	  tagP4_test.SetPtEtaPhiE(tag_p4().pt(),tag_p4().eta(),tag_p4().phi(),tag_p4().E());
+	  TLorentzVector dilepP4test(0,0,0,0);
+	  dilepP4test = tagP4_test + probeP4_test;
+	  mll_test = dilepP4test.M();
+	}
+      }//doScaleSmearCorrections
       
       if (evt_isRealData()) {
 	for ( unsigned int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
@@ -165,7 +211,14 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 
       //tag requirements
       if (tag_p4().pt() < 30 ) continue;
-      if (fabs(tag_p4().eta()) > 2.5) continue;
+      if (fabs(tag_p4().eta()) > 2.1) continue;
+
+      //hack to check low/high PU events
+      // if (nvtx() > 10) continue;
+      // if (nvtx() < 20) continue;
+      //hack to select only certain runs in data
+      // if (evt_isRealData() && evt_run() > 275376) continue; //runB
+      //if (evt_isRealData() && (evt_run() <= 275376 || evt_run() > 276283)) continue; //runC
       
       LorentzVector el_seedCl = el_p4;
       el_seedCl *= eSeed()/el_p4.E();
@@ -177,7 +230,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       t_seedCl *= tag_eSeed()/tag_p4().E();
       LorentzVector t_SC = tag_p4();
       LorentzVector t_SCraw = tag_p4();
-      t_SCraw *= tag_eSCraw() / tag_p4().E();
+      t_SCraw *= tag_eSCRaw() / tag_p4().E();
       
       LorentzVector dilep_seedCL_p4 = t_seedCl + el_seedCl;
       LorentzVector dilep_SCraw_p4 = t_SCraw + el_SCraw;
@@ -185,61 +238,110 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       float mll_seedCL = dilep_seedCL_p4.M();
       float mll_SCraw = dilep_SCraw_p4.M();
       
-
       bool bothEB = false;
+      bool bothEE = false;
       bothEB = (fabs(tag_p4().eta()) < 1.479) && (fabs(eta) < 1.479);
+      bothEE = (fabs(tag_p4().eta()) > 1.479) && (fabs(eta) > 1.479);
+
+      //bools
+      const bool passZwindow = mll < 100 && mll > 80;
+      const bool passOS = tag_charge() != charge();
+      const bool passProbeSelection = passZwindow && passOS;
+      const bool passMvaCleaning = mva()>0 && doMvaCleaning;
+      const bool passIsoCleaning = (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && doIsoCleaning;
+      const bool passIdCleaning = passes_HAD_veto_noiso_v3() && doIdCleaning;
+      const bool passTagTrigger =  tag_HLT_Ele27_eta2p1_WPTight_Gsf() > 0;
       
-      if((evt_isRealData() && tag_HLT_Ele23_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
-	if (mll < 100 && mll > 80){
+      if((evt_isRealData() && passTagTrigger) ||  (!evt_isRealData() ) ){
+	
+	if (passProbeSelection){
+
+	  //nominal plots
 	  makePlots( h_1d, "Zprobe", lumiScale);
-	  if (evt_isRealData()) {
-	    if (evt_run() > 273726) makePlots( h_1d, "ZprobeLaterRuns", lumiScale);
-	    else  makePlots( h_1d, "ZprobeEarlierRuns", lumiScale);
-	  }
-	  else { //for MC, these are identical to regular plots
-	    makePlots( h_1d, "ZprobeLaterRuns", lumiScale);
-	    makePlots( h_1d, "ZprobeEarlierRuns", lumiScale);
-	  }
-	}
-	if (mll < 100 && mll > 80 && mva()>0){ makePlots( h_1d, "ZprobePassMVA", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1){ makePlots( h_1d, "ZprobePassIso", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3()){ makePlots( h_1d, "ZprobePassID", lumiScale); }
-	if ( fabs(eta) > 1.77 ) {
-	  if (mll < 100 && mll > 80){ makePlots( h_1d, "ZprobeEta177", lumiScale); }
-	  if (mll < 100 && mll > 80 && mva()>0){ makePlots( h_1d, "ZprobePassMVAEta177", lumiScale); }
-	  if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1){ makePlots( h_1d, "ZprobePassIsoEta177", lumiScale); }
-	  if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3()){ makePlots( h_1d, "ZprobePassIDEta177", lumiScale); }
-	}
-	//if (mll < 100 && mll > 80 && conv_vtx_flag() == 0 ){ makePlots( h_1d, "ZprobePixelVeto", lumiScale); }
-	//pt 10t20
-	if (mll < 100 && mll > 80 && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePt10t20", lumiScale); }
-	if (mll < 100 && mll > 80 && mva()>0 && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassMVAPt10t20", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassIsoPt10t20", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassIDPt10t20", lumiScale); }
-	//pt 20t30
-	if (mll < 100 && mll > 80 && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePt20t30", lumiScale); }
-	if (mll < 100 && mll > 80 && mva()>0 && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassMVAPt20t30", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassIsoPt20t30", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassIDPt20t30", lumiScale); }
-	//pt 30t40
-	if (mll < 100 && mll > 80 && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePt30t40", lumiScale); }
-	if (mll < 100 && mll > 80 && mva()>0 && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassMVAPt30t40", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassIsoPt30t40", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassIDPt30t40", lumiScale); }
-	//pt 40tInf
-	if (mll < 100 && mll > 80 && pt > 40 ){ makePlots( h_1d, "ZprobePt40tInf", lumiScale); }
-	if (mll < 100 && mll > 80 && mva()>0 && pt > 40 ){ makePlots( h_1d, "ZprobePassMVAPt40tInf", lumiScale); }
-	if (mll < 100 && mll > 80 && (pfChargedHadronIso() +pfPhotonIso() +pfNeutralHadronIso())/pt < 0.1 && pt > 40 ){ makePlots( h_1d, "ZprobePassIsoPt40tInf", lumiScale); }
-	if (mll < 100 && mll > 80 && passes_HAD_veto_noiso_v3() && pt > 40 ){ makePlots( h_1d, "ZprobePassIDPt40tInf", lumiScale); }
-	//fake
+	  if (passMvaCleaning){ makePlots( h_1d, "ZprobePassMVA", lumiScale); }
+	  if (passIsoCleaning){ makePlots( h_1d, "ZprobePassIso", lumiScale); }
+	  if (passIdCleaning){ makePlots( h_1d, "ZprobePassID", lumiScale); }
+
+	  //same sign plots
+	  if (tag_charge() == charge() && doSameSign) {
+	    makePlots( h_1d, "ZprobeSameSign", lumiScale); 
+	    if (passMvaCleaning){ makePlots( h_1d, "ZprobePassMVASameSign", lumiScale); }
+	    if (passIsoCleaning){ makePlots( h_1d, "ZprobePassIsoSameSign", lumiScale); }
+	    if (passIdCleaning){ makePlots( h_1d, "ZprobePassIDSameSign", lumiScale); }
+	  }//same sign
+		
+	  //split endcap eta
+	  if (doEtaSplit) {
+	    if (abs(eta) > 1.5 && abs(eta) < 2) {
+	      makePlots( h_1d, "ZprobeLowEta", lumiScale); 
+	      if (passMvaCleaning){ makePlots( h_1d, "ZprobePassMVALowEta", lumiScale); }
+	      if (passIsoCleaning){ makePlots( h_1d, "ZprobePassIsoLowEta", lumiScale); }
+	      if (passIdCleaning){ makePlots( h_1d, "ZprobePassIDLowEta", lumiScale); }
+	    }
+	    else if (abs(eta) > 2) {
+	      makePlots( h_1d, "ZprobeHighEta", lumiScale); 
+	      if (passMvaCleaning){ makePlots( h_1d, "ZprobePassMVAHighEta", lumiScale); }
+	      if (passIsoCleaning){ makePlots( h_1d, "ZprobePassIsoHighEta", lumiScale); }
+	      if (passIdCleaning){ makePlots( h_1d, "ZprobePassIDHighEta", lumiScale); }
+	    }
+	  }//split eta
+
+	  //split nVtx
+	  if (doNvtxSplit) {
+	    if (nvtx() < 10) {
+	      makePlots( h_1d, "ZprobeLowNvtx", lumiScale); 
+	      if (passMvaCleaning){ makePlots( h_1d, "ZprobePassMVALowNvtx", lumiScale); }
+	      if (passIsoCleaning){ makePlots( h_1d, "ZprobePassIsoLowNvtx", lumiScale); }
+	      if (passIdCleaning){ makePlots( h_1d, "ZprobePassIDLowNvtx", lumiScale); }
+	    }
+	    else if (nvtx() > 20) {
+	      makePlots( h_1d, "ZprobeHighNvtx", lumiScale); 
+	      if (passMvaCleaning){ makePlots( h_1d, "ZprobePassMVAHighNvtx", lumiScale); }
+	      if (passIsoCleaning){ makePlots( h_1d, "ZprobePassIsoHighNvtx", lumiScale); }
+	      if (passIdCleaning){ makePlots( h_1d, "ZprobePassIDHighNvtx", lumiScale); }
+	    }
+	  }//split eta
+
+	  // if (mll < 50 && mll > 20){ makePlots( h_1d, "ZprobeOffZ", lumiScale); }
+	  // if (mll < 50 && mll > 20 && passMvaCleaning){ makePlots( h_1d, "ZprobePassMVAOffZ", lumiScale); }
+	  // if (mll < 50 && mll > 20 && passIsoCleaning){ makePlots( h_1d, "ZprobePassIsoOffZ", lumiScale); }
+	  // if (mll < 50 && mll > 20 && passIdCleaning){ makePlots( h_1d, "ZprobePassIDOffZ", lumiScale); }
+
+	  //pt-binned plots
+	  if (doPtBins) {
+	    //pt 10t20
+	    if (pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePt10t20", lumiScale); }
+	    if (passMvaCleaning && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassMVAPt10t20", lumiScale); }
+	    if (passIsoCleaning && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassIsoPt10t20", lumiScale); }
+	    if (passIdCleaning && pt > 10 && pt < 20 ){ makePlots( h_1d, "ZprobePassIDPt10t20", lumiScale); }
+	    //pt 20t30
+	    if (pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePt20t30", lumiScale); }
+	    if (passMvaCleaning && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassMVAPt20t30", lumiScale); }
+	    if (passIsoCleaning && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassIsoPt20t30", lumiScale); }
+	    if (passIdCleaning && pt > 20 && pt < 30 ){ makePlots( h_1d, "ZprobePassIDPt20t30", lumiScale); }
+	    //pt 30t40
+	    if (pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePt30t40", lumiScale); }
+	    if (passMvaCleaning && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassMVAPt30t40", lumiScale); }
+	    if (passIsoCleaning && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassIsoPt30t40", lumiScale); }
+	    if (passIdCleaning && pt > 30 && pt < 40 ){ makePlots( h_1d, "ZprobePassIDPt30t40", lumiScale); }
+	    //pt 40tInf
+	    if (pt > 40 ){ makePlots( h_1d, "ZprobePt40tInf", lumiScale); }
+	    if (passMvaCleaning && pt > 40 ){ makePlots( h_1d, "ZprobePassMVAPt40tInf", lumiScale); }
+	    if (passIsoCleaning && pt > 40 ){ makePlots( h_1d, "ZprobePassIsoPt40tInf", lumiScale); }
+	    if (passIdCleaning && pt > 40 ){ makePlots( h_1d, "ZprobePassIDPt40tInf", lumiScale); }
+	  }//doPtBins
+	  
+	}//passProbeSelection
+	
 	if (mll < 70 && mll > 30){ makePlots( h_1d, "Fake", lumiScale);}	
+
       }// isRealData?
       
       //things to only fill once per event
       const int evt = evt_event();
       if( lastEventSaved_ != evt ){
 	
-	if((evt_isRealData() && tag_HLT_Ele23_WPLoose_Gsf() > 0) ||  (!evt_isRealData() ) ){
+	if((evt_isRealData() &&  passTagTrigger) ||  (!evt_isRealData() ) ){
 	  
 	  //inclusive mll
 	  plot1D("hZprobe_mll_all",mll, lumiScale, h_1d, "mll",150,0,150);
@@ -257,60 +359,97 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
 	      plot1D("hZprobe_mllEB_SCraw_pogMedium_all",mll_SCraw, lumiScale, h_1d, "mll",150,0,150);
 	      plot1D("hZprobe_mllEB_seedCL_pogMedium_all",mll_seedCL, lumiScale, h_1d, "mll",150,0,150); 
 	    }
-	    else {
+	    else if (bothEE) {
 	      plot1D("hZprobe_mllEE_pogMedium_all",mll, lumiScale, h_1d, "mll",150,0,150);
 	      plot1D("hZprobe_mllEE_SCraw_pogMedium_all",mll_SCraw, lumiScale, h_1d, "mll",150,0,150);
 	      plot1D("hZprobe_mllEE_seedCL_pogMedium_all",mll_seedCL, lumiScale, h_1d, "mll",150,0,150); 
-	    }	  
+	    }
+	    else {
+	      plot1D("hZprobe_mllEBEE_pogMedium_all",mll, lumiScale, h_1d, "mll",150,0,150);
+	      plot1D("hZprobe_mllEBEE_SCraw_pogMedium_all",mll_SCraw, lumiScale, h_1d, "mll",150,0,150);
+	      plot1D("hZprobe_mllEBEE_seedCL_pogMedium_all",mll_seedCL, lumiScale, h_1d, "mll",150,0,150); 
+	    }
+
+	    if (bothEE || !bothEB){
+	      plot1D("hZprobe_mllEEmixed_pogMedium_all",mll, lumiScale, h_1d, "mll",150,0,150);
+	      plot1D("hZprobe_mllEEmixed_SCraw_pogMedium_all",mll_SCraw, lumiScale, h_1d, "mll",150,0,150);
+	      plot1D("hZprobe_mllEEmixed_seedCL_pogMedium_all",mll_seedCL, lumiScale, h_1d, "mll",150,0,150); 
+	    }
+	    
+	    if (doScaleSmearCorrections){
+	      plot1D("hZprobe_mll_pogMedium_ScaleSmear_all",mll_corrected, lumiScale, h_1d, "mll",150,0,150);
+	      if (doDebug) plot1D("hZprobe_mll_pogMedium_test_all",mll_test, lumiScale, h_1d, "mll",150,0,150);
+	      if (bothEB){
+		plot1D("hZprobe_mllEB_pogMedium_ScaleSmear_all",mll_corrected, lumiScale, h_1d, "mll",150,0,150);
+		if (doDebug) plot1D("hZprobe_mllEB_pogMedium_test_all",mll_test, lumiScale, h_1d, "mll",150,0,150);
+	      }
+	      else if (bothEE) {
+		plot1D("hZprobe_mllEE_pogMedium_ScaleSmear_all",mll_corrected, lumiScale, h_1d, "mll",150,0,150);
+		if (doDebug) plot1D("hZprobe_mllEE_pogMedium_test_all",mll_test, lumiScale, h_1d, "mll",150,0,150);
+	      }
+	      else {
+		plot1D("hZprobe_mllEBEE_pogMedium_ScaleSmear_all",mll_corrected, lumiScale, h_1d, "mll",150,0,150);
+		if (doDebug) plot1D("hZprobe_mllEBEE_pogMedium_test_all",mll_test, lumiScale, h_1d, "mll",150,0,150);
+	      }
+
+	      if (bothEE || !bothEB){
+		plot1D("hZprobe_mllEEmixed_pogMedium_ScaleSmear_all",mll_corrected, lumiScale, h_1d, "mll",150,0,150);
+		if (doDebug) plot1D("hZprobe_mllEEmixed_pogMedium_test_all",mll_test, lumiScale, h_1d, "mll",150,0,150);
+	      }
+	      
+	    }//doScaleSmearCorrections
 	    
 	  }//pass med ID
 	  
 	}// isRealData?
 
 	//------trigger turn ons-------
+
+	if (makeTriggerPlots) {
+	  //denominator for trigger eff
+	  //require tag matched to passTagTrigger AND passes_POG_mediumID on probe
+	  if (  (passTagTrigger || !evt_isRealData()) && passes_POG_mediumID() ) {
+	    makeDilepPlots( h_1d, "tagIsLead_probeMedPog", lumiScale);
+	    if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "tagIsLead_probeMedPog_etaLess2", lumiScale) ;
+	  }
+	  
+	  //make plots for individual triggers
+	  for ( unsigned int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
+	    if ( trigDecision[trigIdx] != 0) {
+	      
+	      //require ptPlat in denominator, for eta efficiency
+	      if ( (passTagTrigger || !evt_isRealData()) && passes_POG_mediumID() && pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "tagIsLead_probeMedPog_"+ trigNames[trigIdx] +"_ptPlat", lumiScale) ;
+	      
+	      //EE + EB plots
+	      makeDilepPlots( h_1d, trigNames[trigIdx], lumiScale);
+	      
+	      //EB or EE plots
+	      if ( abs(tag_p4().eta())<1.44 && abs(eta) < 1.44 ) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_EB", lumiScale); }
+	      else { makeDilepPlots( h_1d, trigNames[trigIdx]+"_EE", lumiScale); }
+	      
+	      //require tag matched to passTagTrigger AND passes_POG_mediumID on probe AND probe triggered trigger
+	      if ( passTagTrigger && passes_POG_mediumID() && trigDecision[trigIdx] > 0 ) {
+		makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagIsLead_probeMedPog_probeTrig", lumiScale);
+		if ( fabs(eta)<2 ) makeDilepPlots( h_1d, trigNames[trigIdx]+"tagIsLead_probeMedPog_probeTrig_etaLess2", lumiScale) ;
+		if ( pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, trigNames[trigIdx]+"tagIsLead_probeMedPog_ptPlat", lumiScale) ;
+	      }
+	      
+	      if ( passTagTrigger && passes_POG_mediumID() && probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg() > 0 ) {
+		makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg_tagIsLead_probeMedPog_probeTrig", lumiScale);
+		if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg_tagIsLead_probeMedPog_probeTrig_etaLess2", lumiScale) ;
+		if ( pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg_tagIsLead_probeMedPog_ptPlat", lumiScale) ;
+	      }
+	      if ( passTagTrigger && passes_POG_mediumID() && probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg() > 0 ) {
+		makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg_tagIsLead_probeMedPog_probeTrig", lumiScale);
+		if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg_tagIsLead_probeMedPog_probeTrig_etaLess2", lumiScale) ;
+		if ( pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg_tagIsLead_probeMedPog_ptPlat", lumiScale) ;
+	      }
+	      plot1D("h_trigs",trigIdx-0.5, lumiScale, h_1d, "trigger",trigNames.size(),-0.5,trigNames.size()-0.5); //counts how often each trigger fired
+	      
+	    }//trigDecision
+	  }//trig loop
+	}//makeTrigPlots
 	
-	//denominator for trigger eff
-	//require tag matched to HLT_Ele27_eta2p1_WPLoose_Gsf AND passes_POG_mediumID on probe
-	if ( (tag_HLT_Ele23_WPLoose_Gsf() > 0 || !evt_isRealData()) && passes_POG_mediumID() ) {
-	  makeDilepPlots( h_1d, "tagIsLead_probeMedPog", lumiScale);
-	  if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "tagIsLead_probeMedPog_etaLess2", lumiScale) ;
-	}
-
-	//make plots for individual triggers
-	for ( unsigned int trigIdx=0; trigIdx < trigNames.size(); trigIdx++) {
-	  if ( trigDecision[trigIdx] != 0) {
-	    
-	    //require ptPlat in denominator, for eta efficiency
-	    if ( (tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 || !evt_isRealData()) && passes_POG_mediumID() && pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "tagIsLead_probeMedPog_"+ trigNames[trigIdx] +"_ptPlat", lumiScale) ;
-
-	    //EE + EB plots
-	    makeDilepPlots( h_1d, trigNames[trigIdx], lumiScale);
-	    
-	    //EB or EE plots
-	    if ( abs(tag_p4().eta())<1.44 && abs(eta) < 1.44 ) { makeDilepPlots( h_1d, trigNames[trigIdx]+"_EB", lumiScale); }
-	    else { makeDilepPlots( h_1d, trigNames[trigIdx]+"_EE", lumiScale); }
-
-	    //require tag matched to HLT_Ele27_eta2p1_WPLoose_Gsf AND passes_POG_mediumID on probe AND probe triggered trigger
-	    if ( tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 && passes_POG_mediumID() && trigDecision[trigIdx] > 0 ) {
-	      makeDilepPlots( h_1d, trigNames[trigIdx]+"_tagIsLead_probeMedPog_probeTrig", lumiScale);
-	      if ( fabs(eta)<2 ) makeDilepPlots( h_1d, trigNames[trigIdx]+"tagIsLead_probeMedPog_probeTrig_etaLess2", lumiScale) ;
-	      if ( pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, trigNames[trigIdx]+"tagIsLead_probeMedPog_ptPlat", lumiScale) ;
-	    }
-
-	    if ( tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 && passes_POG_mediumID() && probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg() > 0 ) {
-	      makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg_tagIsLead_probeMedPog_probeTrig", lumiScale);
-	      if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg_tagIsLead_probeMedPog_probeTrig_etaLess2", lumiScale) ;
-	      if ( pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_LeadingLeg_tagIsLead_probeMedPog_ptPlat", lumiScale) ;
-	    }
-	    if ( tag_HLT_Ele27_eta2p1_WPLoose_Gsf() > 0 && passes_POG_mediumID() && probe_HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg() > 0 ) {
-	      makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg_tagIsLead_probeMedPog_probeTrig", lumiScale);
-	      if ( fabs(eta)<2 ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg_tagIsLead_probeMedPog_probeTrig_etaLess2", lumiScale) ;
-	      if ( pt>trigPtPlat[trigIdx] ) makeDilepPlots( h_1d, "HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_TrailingLeg_tagIsLead_probeMedPog_ptPlat", lumiScale) ;
-	    }
-	    plot1D("h_trigs",trigIdx-0.5, lumiScale, h_1d, "trigger",trigNames.size(),-0.5,trigNames.size()-0.5); //counts how often each trigger fired
-
-	  }//trigDecision
-	}//trig loop
 	lastEventSaved_ = evt;
       }//lastEvtSaved
       
@@ -418,6 +557,7 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   const float probe_eOverPOut = eOverPOut();
   const float probe_dEtaOut = dEtaOut();
   const float probe_dPhiOut = dPhiOut();
+  const float probe_hits = gsf_validHits();
 
   //find leading/trailing leptons
   float pt1 = -999;
@@ -477,6 +617,7 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   else return;
   
   plot1D(("h"+sel+"_pt"+EBEE).Data(), pt,  weight, h_1, "pt", 100, 0, 200);
+  plot1D(("h"+sel+"_pt_corrected"+EBEE).Data(), pt_corrected_,  weight, h_1, "pt", 100, 0, 200);
   plot1D(("h"+sel+"_leading_pt"+EBEE).Data(), pt1,  weight, h_1, "pt", 50, 0, 100);
   plot1D(("h"+sel+"_trailing_pt"+EBEE).Data(), pt2,  weight, h_1, "pt", 50, 0, 100);
   plot1D(("h"+sel+"_seedEt"+EBEE).Data(), seedEt,  weight, h_1, "seed ET", 50, 0, 100);
@@ -486,8 +627,10 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   
   plot1D(("h"+sel+"_relchiso"+EBEE).Data(), pfChargedHadronIso()/pt,  weight, h_1, "PFCh", 100, 0, 1);
   plot1D(("h"+sel+"_relemiso"+EBEE).Data(), pfPhotonIso()/pt,  weight, h_1, "PFEM", 100, 0, 1);
+  if (abs(eta) > 1.5 && abs(eta) < 2) plot1D(("h"+sel+"_relemisoEElow").Data(), pfPhotonIso()/pt,  weight, h_1, "PFEM", 100, 0, 1);
+  if (abs(eta) > 2)                   plot1D(("h"+sel+"_relemisoEEhigh").Data(), pfPhotonIso()/pt,  weight, h_1, "PFEM", 100, 0, 1); 
   plot1D(("h"+sel+"_relnhiso"+EBEE).Data(), pfNeutralHadronIso()/pt,  weight, h_1, "PFNh", 100, 0, 1);
-  
+
   plot1D(("h"+sel+"_relECALiso"+EBEE).Data(), ecalIso()/pt,  weight, h_1, "ECAL RelIso", 100, 0, 1);
   plot1D(("h"+sel+"_relHCALiso"+EBEE).Data(), hcalIso()/pt,  weight, h_1, "HCAL RelIso", 100, 0, 1);
   plot1D(("h"+sel+"_relECALHCALiso"+EBEE).Data(), (ecalIso()+hcalIso())/pt,  weight, h_1, "HCAL RelIso", 100, 0, 1);
@@ -562,20 +705,23 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   plot1D(("h"+sel+"_chi2"+EBEE).Data(), probe_chi2,  weight, h_1, "chi2", 50, 0, 200);
   plot1D(("h"+sel+"_ndof"+EBEE).Data(), probe_ndof,  weight, h_1, "ndof", 50, 0, 50);
   plot1D(("h"+sel+"_fbrem"+EBEE).Data(), probe_fbrem,  weight, h_1, "fbrem", 50, -1, 1); 
+  if (abs(eta) > 1.5 && abs(eta) < 2) plot1D(("h"+sel+"_fbremEElow").Data(), probe_fbrem,  weight, h_1, "fbrem", 50, -1, 1); 
+  if (abs(eta) > 2) plot1D(("h"+sel+"_fbremEEhigh").Data(), probe_fbrem,  weight, h_1, "fbrem", 50, -1, 1); 
   plot1D(("h"+sel+"_eOverPOut"+EBEE).Data(), probe_eOverPOut,  weight, h_1, "eOverPOut", 25, 0, 10);
   // plot1D(("h"+sel+"_dEtaOut"+EBEE).Data(), probe_dEtaOut,  weight, h_1, "dEtaOut", 50, 0, 100);
   // plot1D(("h"+sel+"_dPhiOut"+EBEE).Data(), probe_dPhiOut,  weight, h_1, "dPhiOut", 50, 0, 100);
+  plot1D(("h"+sel+"_gsf_validHits"+EBEE).Data(), probe_hits,  weight, h_1, "gsh_validHits", 30, 0, 30);
 
   //additional stuff
   if (probe_r9_full5x5 > 0.9) plot1D(("h"+sel+"_sigmaIPhiIPhi_full5x5_r9High"+EBEE).Data(), probe_sigmaIPhiIPhi_full5x5,  weight, h_1, "sigmaIPhiIPhi_full5x5", 100, 0, EBEE=="EB" ? 0.05 : 0.1);
   if (probe_r9_full5x5 < 0.9) plot1D(("h"+sel+"_sigmaIPhiIPhi_full5x5_r9Low"+EBEE).Data(), probe_sigmaIPhiIPhi_full5x5,  weight, h_1, "sigmaIPhiIPhi_full5x5", 100, 0, EBEE=="EB" ? 0.05 : 0.1);
-  plot1D(("h"+sel+"_SIP3D"+EBEE).Data(), probe_ip3d/probe_ip3derr,  weight, h_1, "SIP3D", 60, -10, 10);
-  plot1D(("h"+sel+"_mll"+EBEE).Data(), mll,  weight, h_1, "mll", 40, 80, 100); 
-  if (probe_mva < -0.4) plot1D(("h"+sel+"_mll_mvaFail"+EBEE).Data(), mll,  weight, h_1, "mll", 40, 80, 100); 
+  plot1D(("h"+sel+"_SIP3D"+EBEE).Data(), abs(probe_ip3d/probe_ip3derr),  weight, h_1, "SIP3D", 30, 0, 10);
+  plot1D(("h"+sel+"_mll"+EBEE).Data(), mll,  weight, h_1, "mll", 150, 0, 150); 
+  if (probe_mva < -0.4) plot1D(("h"+sel+"_mll_mvaFail"+EBEE).Data(), mll,  weight, h_1, "mll", 150, 0, 150); 
   plot1D(("h"+sel+"_nvtx"+EBEE).Data(), numberVtx,  weight, h_1, "nvtx", 50, 0, 50); 
   plot1D(("h"+sel+"_eSCRawVSpt"+EBEE).Data(), probe_eSCRaw/pt,  weight, h_1, "eSCRaw/pt", 50, 0.5, 1.5);
-  plot1D(("h"+sel+"_ckf_chi2_over_ckf_ndof"+EBEE).Data(), probe_chi2/probe_ndof,  weight, h_1, "chi2/ndof", 50, 0, 50);
-  plot1D(("h"+sel+"_chi2_over_ndof"+EBEE).Data(), probe_chi2/probe_ndof,  weight, h_1, "ckf_chi2/ckf_ndof", 50, 0, 50);
+  plot1D(("h"+sel+"_ckf_chi2_over_ckf_ndof"+EBEE).Data(), probe_ckf_chi2/probe_ckf_ndof,  weight, h_1, "ckf_chi2/ckf_ndof", 50, 0, 50);
+  plot1D(("h"+sel+"_chi2_over_ndof"+EBEE).Data(), probe_chi2/probe_ndof,  weight, h_1, "chi2/ndof", 50, 0, 50);
   plot1D(("h"+sel+"_tagpt"+EBEEtag).Data(), t_pt,  weight, h_1, "tag pt", 50, 0, 100);
   plot1D(("h"+sel+"_tageta").Data(), t_eta,  weight, h_1, "tag eta", 50, -2.5, 2.5);
   plot1D(("h"+sel+"_tagphi").Data(), t_phi,  weight, h_1, "tag phi", 50, -3.5, 3.5);
@@ -584,6 +730,7 @@ void makePlots(std::map<std::string, TH1*> & h_1, TString sel, float weight = 1)
   plot1D(("h"+sel+"_Zy").Data(), z_y,  weight, h_1, "Z rapidity", 100, -5, 5);
   plot1D(("h"+sel+"_Zphi").Data(), z_phi,  weight, h_1, "Z phi", 50, -3.5, 3.5);
   plot1D(("h"+sel+"_ooemoop"+EBEE).Data(), fabs( (1.0/ecalEnergy()) - (eOverPIn()/ecalEnergy())) ,  weight, h_1, "|1/E - 1/p|", 50, 0, 1);
+  plot1D(("h"+sel+"_ooemoop_corrected"+EBEE).Data(), fabs( (1.0/E_corrected_) - (eOverPIn()/ecalEnergy())) ,  weight, h_1, "|1/E - 1/p|", 50, 0, 1);
   plot1D(("h"+sel+"_e1x5_over_e5x5"+EBEE).Data(), probe_e1x5_full5x5 / probe_e5x5_full5x5,  weight, h_1, "e1x5/e5x5",50, 0, 1);
   plot1D(("h"+sel+"_e3x3"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw,  weight, h_1, "e3x3",100, 0, EBEE=="EB" ? 200 : 400);
   plot1D(("h"+sel+"_e3x3_over_e5x5"+EBEE).Data(), probe_r9_full5x5 * probe_eSCRaw / probe_e5x5_full5x5,  weight, h_1, "e3x3/e5x5",50, 0, 1);

@@ -30,5 +30,7 @@ using namespace lepton_tree;
 
 int LeptonTreeLooper(TChain* chain, TString output_name = "test", int nEvents = -1);
   
+float pt_corrected_;
+float E_corrected_;
 
 #endif
