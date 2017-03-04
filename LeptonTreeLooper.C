@@ -65,7 +65,7 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
   TH1D * h_ratio = (TH1D*) f_pu->Get("h_dataOverMC_nvtxEB");
 
   //load electron scale correction class
-  EnergyScaleCorrection_class correctionClass("data/Moriond17_23Jan_ele",0);
+  EnergyScaleCorrection_class correctionClass("data/Moriond17_74x_pho",0);
   correctionClass.doScale = true;
   correctionClass.doSmearings = true;
 
@@ -252,7 +252,8 @@ int LeptonTreeLooper( TChain* chain, TString output_name , int nEvents ) {
       const bool passIdCleaning = passes_HAD_veto_noiso_v3() && doIdCleaning;
       const bool passTagTrigger =  tag_HLT_Ele27_eta2p1_WPTight_Gsf() > 0;
       
-      if((evt_isRealData() && passTagTrigger) ||  (!evt_isRealData() ) ){
+      // if((evt_isRealData() && passTagTrigger) ||  (!evt_isRealData() ) ){
+      if(passTagTrigger){ //now apply tag trigger to both MC & data
 	
 	if (passProbeSelection){
 
